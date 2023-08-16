@@ -491,10 +491,6 @@ czm-preview-mode is activated for the first time."
   :lighter " PrT"
   :global nil
   :group 'czm-preview
-  :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c C-p") #'czm-preview-current-environment)
-            (define-key map (kbd "C-c C-t") #'czm-preview-timer-toggle)
-            map)
   (if czm-preview-mode
     (progn
       ;; Start the timer if it's not already running
