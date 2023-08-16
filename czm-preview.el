@@ -486,7 +486,7 @@ POS defaults to (point)."
   (interactive)
   (unless czm-preview-timer
     (setq czm-preview-timer
-	  (run-with-idle-timer 0.1 t #'czm-preview--timer-function)))
+	  (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
   (setq czm-preview-timer-enabled (not czm-preview-timer-enabled))
   (if czm-preview-timer-enabled
       (progn
@@ -495,11 +495,15 @@ POS defaults to (point)."
 	  (let ((inhibit-message t))
 	    (save-excursion
 	      (preview-cache-preamble)))
+          ; the following also happens elsewhere.  what's the deal?
 	  (setq-local czm-preview--preview-region-already-run t)))
+    ; doesn't make a lot of sense to remove a hook here, given that
+    ; the timer is a buffer-local thing while hooks are global.  think
+    ; of a better way and clear this up.
     (remove-hook 'before-save-hook #'czm-preview-current-environment t)
     (setq czm-preview-active-region nil))
-  (message "czm-preview-timer-enabled = %s" czm-preview-timer-enabled)
-  )
+  (message "czm-preview-timer-enabled = %s" czm-preview-timer-enabled))
+
 
 ;; (defun czm-preview-activate-timer ()
 ;;   (interactive)
@@ -539,7 +543,7 @@ POS defaults to (point)."
 ;; (advice-add 'preview-region :around #'czm-preview-region-advice)
 
 
-
+;; because texlive 2023 seems super slow
 (when (equal (system-name) "Pauls-MBP-3")
   (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2020/bin/x86_64-darwin/"))
 ;; (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2023/bin/universal-darwin/")
