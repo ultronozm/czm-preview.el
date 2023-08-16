@@ -5,7 +5,7 @@
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
 ;; Version: 1.0
 ;; URL: https://github.com/ultronozm/czm-preview.el
-;; Package-Requires: ((emacs "29.1"))
+;; Package-Requires: ((emacs "29.1") (auctex "11.86.1") (czm-tex-util "0.1"))
 ;; Keywords: tex
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -56,6 +56,7 @@
 (require 'cl-lib)
 (require 'latex)
 (require 'preview)
+(require 'czm-tex-util)
 
 (defgroup czm-preview nil
   "Settings for czm-preview."
@@ -539,7 +540,7 @@ POS defaults to (point)."
 
 
 
-(when (equal (system-name) "Pauls-MBP-2")
+(when (equal (system-name) "Pauls-MBP-3")
   (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2020/bin/x86_64-darwin/"))
 ;; (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2023/bin/universal-darwin/")
 ;; /usr/local/texlive/2023/bin/universal-darwin/
@@ -575,8 +576,6 @@ Display message in the minibuffer indicating old and new value."
 
 ;; (advice-add 'preview-generate-preview :around #'my-preview-TeX-master-advice)
 ;; (advice-remove 'preview-generate-preview #'my-preview-TeX-master-advice)
-
-(require 'czm-tex-util)
 
 (defun czm-preview--preprocess (str)
   "Preprocess STR for preview."
