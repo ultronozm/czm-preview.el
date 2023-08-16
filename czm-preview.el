@@ -25,21 +25,19 @@
 
 ;; This package adds the following features to preview.el:
 ;;
-;; - A timer, toggled via `czm-preview-idle-toggle', that previews any
-;; unpreviewed environments in the visible portion of the buffer.
+;; -`czm-preview-mode' activates a timer that aggressively previews
+;; any unpreviewed environments in the visible portion of the buffer.
 ;;
-;; - Some hacks to make previews work in indirect buffers and in
-;; buffers not associated with files (e.g., org mode source blocks).
+;; - Previews work in indirect buffers and in buffers not associated
+;; with files (e.g., indirect org mode source blocks).
 ;;
-;; - A command `czm-preview-current-environment' that shows a preview
-;; of the active equation environment just above where the user is
-;; editing.
+;; - Equation numbers extracted from the .aux file, when possible.
 ;;
-;; automatically generate previews on a timer.  This is toggled with
-;; the command czm-preview-timer-toggle.
+;; -`czm-preview-current-environment' shows a preview of the active
+;; equation environment just above where the user is editing.  This is
+;; useful for visualizing what you're working on.
 ;;
-;; Caution: this package OVERRIDES the following functions from
-;; preview.el:
+;; This package OVERRIDES the following functions from preview.el:
 ;; 
 ;; - preview-region
 ;; 
@@ -115,8 +113,6 @@ Return nil if not currently in such an environment."
 (defvar-local czm-preview-active-region nil
   "Stores the region currently being processed by `preview-region'.")
 
-(defvar-local czm-preview--preview-region-already-run nil
-  "Set to t after preview-region has been run for the first time.")
 
 
 (defun czm-preview--after-change-function (beg end _length)
@@ -457,6 +453,10 @@ POS defaults to (point)."
     (nreverse intervals)))
 
 (defvar czm-preview-timer nil)
+
+(defvar-local czm-preview--preview-region-already-run nil
+  "Set to t after preview-region has been run for the first time.")
+
 (defvar-local czm-preview-timer-enabled nil)
 (defvar-local preview-region--last-time nil)
 (defvar czm-preview-latex-prefix-directory "")
@@ -479,30 +479,69 @@ POS defaults to (point)."
 	 (unless (czm-preview-processes)
 	   (czm-preview-current-environment))))))
 
+(defcustom czm-preview-timer-interval 0.1
+  "Interval for preview timer.
+For this to have any effect, it must be set before
+czm-preview-mode is activated for the first time."
+  :type 'number
+  :group 'czm-preview)
+
+(define-minor-mode czm-preview-mode
+  "Minor mode for running LaTeX preview on a timer."
+  :lighter " PrT"
+  :global nil
+  :group 'czm-preview
+  :keymap (let ((map (make-sparse-keymap)))
+            (define-key map (kbd "C-c C-p") #'czm-preview-current-environment)
+            (define-key map (kbd "C-c C-t") #'czm-preview-timer-toggle)
+            map)
+  (if czm-preview-mode
+    (progn
+      ;; Start the timer if it's not already running
+      (unless czm-preview-timer
+        (setq czm-preview-timer
+              (run-with-timer czm-preview-timer-interval
+                              czm-preview-timer-interval
+                              #'czm-preview--timer-function)))
+      ;; If we haven't run preview-region yet in this buffer, then
+      ;; cache the preamble.
+      (unless czm-preview--preview-region-already-run
+        (let ((inhibit-message t))
+          (save-excursion
+	    (preview-cache-preamble)))
+        (setq-local czm-preview--preview-region-already-run t))
+      ;; Enable the timer.
+      (setq-local czm-preview-timer-enabled t)
+      (message "czm-preview-mode enabled."))
+    ;; Disable the timer.
+    (setq-local czm-preview-timer-enabled nil)
+    ;; Hacky:
+    (setq-local czm-preview-active-region nil)
+    (message "czm-preview-mode disabled.")))
 
 ;;;###autoload
-(defun czm-preview-timer-toggle ()
-  "Toggle the preview timer."
-  (interactive)
-  (unless czm-preview-timer
-    (setq czm-preview-timer
-	  (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
-  (setq czm-preview-timer-enabled (not czm-preview-timer-enabled))
-  (if czm-preview-timer-enabled
-      (progn
-	(add-hook 'before-save-hook #'czm-preview-current-environment nil t)
-	(unless czm-preview--preview-region-already-run
-	  (let ((inhibit-message t))
-	    (save-excursion
-	      (preview-cache-preamble)))
-          ; the following also happens elsewhere.  what's the deal?
-	  (setq-local czm-preview--preview-region-already-run t)))
-    ; doesn't make a lot of sense to remove a hook here, given that
-    ; the timer is a buffer-local thing while hooks are global.  think
-    ; of a better way and clear this up.
-    (remove-hook 'before-save-hook #'czm-preview-current-environment t)
-    (setq czm-preview-active-region nil))
-  (message "czm-preview-timer-enabled = %s" czm-preview-timer-enabled))
+;; (defun czm-preview-timer-toggle ()
+;;   "Toggle the preview timer."
+;;   (interactive)
+;;   (unless czm-preview-timer
+;;     (setq czm-preview-timer
+;; 	  (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
+;;   (setq czm-preview-timer-enabled (not czm-preview-timer-enabled))
+;;   (if czm-preview-timer-enabled
+;;       (progn
+;; 	(add-hook 'before-save-hook #'czm-preview-current-environment nil t)
+;; 	(unless czm-preview--preview-region-already-run
+;; 	  (let ((inhibit-message t))
+;; 	    (save-excursion
+;; 	      (preview-cache-preamble)))
+;;           ; the following also happens elsewhere.  what's the deal?
+;; 	  (setq-local czm-preview--preview-region-already-run t)))
+;;     ; doesn't make a lot of sense to remove a hook here, given that
+;;     ; the timer is a buffer-local thing while hooks are global.  think
+;;     ; of a better way and clear this up.
+;;     (remove-hook 'before-save-hook #'czm-preview-current-environment t)
+;;     (setq czm-preview-active-region nil))
+;;   (message "czm-preview-timer-enabled = %s" czm-preview-timer-enabled))
 
 
 ;; (defun czm-preview-activate-timer ()
