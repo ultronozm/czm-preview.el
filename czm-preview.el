@@ -621,14 +621,19 @@ Display message in the minibuffer indicating old and new value."
   (let ((buf (current-buffer)))
     (with-temp-buffer
       (insert str)
-      (latex-mode)
+      ;; (latex-mode)
       (goto-char (point-min))
       (while (re-search-forward "\\\\label{\\([^}]+\\)}" nil t)
 	(let ((label (match-string 1)))
 	  (when-let ((number
 		      (with-current-buffer buf
 			(czm-tex-util-get-label-number label))))
-	    (when (texmathp)
+	    (when
+                ; hack - texmathp expects to be run in LaTeX-mode
+                (let ((comment-start-skip
+                       "\\(\\(^\\|[^\\
+]\\)\\(\\\\\\\\\\)*\\)\\(%+[ 	]*\\)"))
+                  (texmathp))
 	      (insert (format "\\tag{%s}" number))))))
       (buffer-substring-no-properties (point-min) (point-max)))))
 
