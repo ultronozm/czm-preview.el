@@ -461,6 +461,14 @@ POS defaults to (point)."
 (defvar-local preview-region--last-time nil)
 (defvar czm-preview-latex-prefix-directory "")
 
+(defun czm-preview-reset-timer ()
+  "Reset the preview timer."
+  (interactive)
+  (when czm-preview-timer
+    (cancel-timer czm-preview-timer)
+    (setq czm-preview-timer nil))
+  (setq czm-preview-timer
+        (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
@@ -494,11 +502,7 @@ czm-preview-mode is activated for the first time."
   (if czm-preview-mode
     (progn
       ;; Start the timer if it's not already running
-      (unless czm-preview-timer
-        (setq czm-preview-timer
-              (run-with-timer czm-preview-timer-interval
-                              czm-preview-timer-interval
-                              #'czm-preview--timer-function)))
+      (czm-preview-reset-timer)
       ;; If we haven't run preview-region yet in this buffer, then
       ;; cache the preamble.
       (unless czm-preview--preview-region-already-run
