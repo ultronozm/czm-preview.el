@@ -3,9 +3,9 @@
 ;; Copyright (C) 2023  Paul D. Nelson
 
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
-;; Version: 1.0
+;; Version: 0.0
 ;; URL: https://github.com/ultronozm/czm-preview.el
-;; Package-Requires: ((emacs "29.1") (auctex "11.86.1") (czm-tex-util "0.1"))
+;; Package-Requires: ((emacs "29.1") (auctex "11.86.1") (czm-tex-util "0.0"))
 ;; Keywords: tex
 
 ;; This program is free software; you can redistribute it and/or modify
