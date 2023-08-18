@@ -518,12 +518,18 @@ POS defaults to (point)."
    czm-preview-timer
    czm-preview-timer-enabled
    czm-preview--style-hooks-applied
+   font-lock-set-defaults ;; this is key
    (or (not preview-region--last-time)
        (> (float-time) (+ preview-region--last-time 0.25)))
    ;; (not czm-preview-active-region)
    ;; (not (buffer-base-buffer)) ; preview doesn't work in indirect buffers
    (eq major-mode 'latex-mode)
    (cond
+    ((not czm-preview--preview-region-already-run)
+     (let ((inhibit-message t))
+       (save-excursion
+	 (preview-cache-preamble)))
+     (setq-local czm-preview--preview-region-already-run t))
     ((czm-preview--first-visible-stale-region))
     (nil (texmathp)
 	 (unless (czm-preview-processes)
@@ -545,13 +551,6 @@ czm-preview-mode is activated for the first time."
     (progn
       ;; Start the timer if it's not already running
       (czm-preview-reset-timer)
-      ;; If we haven't run preview-region yet in this buffer, then
-      ;; cache the preamble.
-      (unless czm-preview--preview-region-already-run
-        (let ((inhibit-message t))
-          (save-excursion
-	    (preview-cache-preamble)))
-        (setq-local czm-preview--preview-region-already-run t))
       ;; Enable the timer.
       (setq-local czm-preview-timer-enabled t)
       (message "czm-preview-mode enabled."))
