@@ -249,79 +249,81 @@ function being advised, and ARGS are its argument."
 ;;                   (cdr lst))))
 ;;         (goto-char pt)))))
 
+(defvar czm-preview--max-region-radius 5000)
+
 (defun czm-preview-find-first-stale-math-region (beg end)
   "Return convex hull of first state math intervals.
 Search between BEG and END.  Return a cons cell of beginning and
 ending positions."
   (when czm-preview--debug
     (message "czm-preview-find-first-stale-math-region: %s %s" beg end))
-  (let* ((top-level-math-intervals
-	  (czm-preview--find-top-level-math-intervals beg end))
-	 (regions
-	  (mapcar (lambda (interval)
-		    (buffer-substring-no-properties
-		     (car interval) (cdr interval)))
-		  top-level-math-intervals))
-	 (staleness
-	  (cl-mapcar (lambda (interval region)
-		       (and
-			(not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
-			(not (string-match-p (regexp-opt '("<++>" "<+++>"))
-					     region))))
-		     top-level-math-intervals regions))
-	 (line-numbers		 ; only for stuff occuring on one line
-	  (mapcar (lambda (interval)
-		    (let ((line-beg (line-number-at-pos (car interval) ))
-			  (line-end (line-number-at-pos (cdr interval) )))
-		      (when (equal line-beg line-end)
-			line-beg)))
-		  top-level-math-intervals)))
+  (when (< beg end (+ beg (* 2 czm-preview--max-region-radius)))
+    (let* ((top-level-math-intervals
+	    (czm-preview--find-top-level-math-intervals beg end))
+	   (regions
+	    (mapcar (lambda (interval)
+		      (buffer-substring-no-properties
+		       (car interval) (cdr interval)))
+		    top-level-math-intervals))
+	   (staleness
+	    (cl-mapcar (lambda (interval region)
+		         (and
+			  (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
+			  (not (string-match-p (regexp-opt '("<++>" "<+++>"))
+					       region))))
+		       top-level-math-intervals regions))
+	   (line-numbers         ; only for stuff occuring on one line
+	    (mapcar (lambda (interval)
+		      (let ((line-beg (line-number-at-pos (car interval) ))
+			    (line-end (line-number-at-pos (cdr interval) )))
+		        (when (equal line-beg line-end)
+			  line-beg)))
+		    top-level-math-intervals)))
 
-    (when nil
-      ;;  The following comment and code concern a bug in preview.el
-      ;;  for which an adequate fix is given by the functions at the
-      ;;  bottom of this file.
-      
-      ;;  This next chunk of code addresses a bug in preview.el.  If we
-      ;;  call preview-region on a math environment $...$ with the
-      ;;  property that an identical environment appears earlier in the
-      ;;  same line, already has a preview overlay, and is not in the
-      ;;  current region, then preview will attempt to put the new
-      ;;  overlay in the same place as the existing one.  The code below
-      ;;  artificially enlarge the region that we preview so that this
-      ;;  situation never occurs.
-      (let ((n (length regions)))
-	(dotimes (j n)
-	  (let* ((current-index (- n (1+ j)))
-		 (current-line-number (nth current-index line-numbers)))
-	    (when (and current-line-number
-		       (nth current-index staleness))
-	      (let* ((current-region (nth current-index regions))
-		     (i0 (cl-position current-line-number line-numbers
-				      :test #'eq))
-		     (i i0))
-		(while (not (equal (nth i regions) current-region))
-		  (setq i (1+ i)))
-		(dotimes (k (- current-index i))
-		  (setf (nth (+ i k) staleness) t))))))))
+      (when nil
+        ;;  The following comment and code concern a bug in preview.el
+        ;;  for which an adequate fix is given by the functions at the
+        ;;  bottom of this file.
+        
+        ;;  This next chunk of code addresses a bug in preview.el.  If we
+        ;;  call preview-region on a math environment $...$ with the
+        ;;  property that an identical environment appears earlier in the
+        ;;  same line, already has a preview overlay, and is not in the
+        ;;  current region, then preview will attempt to put the new
+        ;;  overlay in the same place as the existing one.  The code below
+        ;;  artificially enlarge the region that we preview so that this
+        ;;  situation never occurs.
+        (let ((n (length regions)))
+	  (dotimes (j n)
+	    (let* ((current-index (- n (1+ j)))
+		   (current-line-number (nth current-index line-numbers)))
+	      (when (and current-line-number
+		         (nth current-index staleness))
+	        (let* ((current-region (nth current-index regions))
+		       (i0 (cl-position current-line-number line-numbers
+				        :test #'eq))
+		       (i i0))
+		  (while (not (equal (nth i regions) current-region))
+		    (setq i (1+ i)))
+		  (dotimes (k (- current-index i))
+		    (setf (nth (+ i k) staleness) t))))))))
 
-    ;;  run preview-region on the first continguous stale chunk
-    (when-let ((first-visible-chunk
-		(car (czm-preview--non-nil-intervals staleness))))
-      (let* ((first-interval-index (car first-visible-chunk))
-	     (last-interval-index (cdr first-visible-chunk))
-	     (first-interval (nth first-interval-index top-level-math-intervals))
-	     (last-interval (nth last-interval-index top-level-math-intervals))
-	     (begin-pos
-	      (car first-interval))
-	     (end-pos (cdr last-interval)))
-        (when czm-preview--debug
-          (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
-	(cons begin-pos end-pos)))))
+      ;;  run preview-region on the first continguous stale chunk
+      (when-let ((first-visible-chunk
+		  (car (czm-preview--non-nil-intervals staleness))))
+        (let* ((first-interval-index (car first-visible-chunk))
+	       (last-interval-index (cdr first-visible-chunk))
+	       (first-interval (nth first-interval-index top-level-math-intervals))
+	       (last-interval (nth last-interval-index top-level-math-intervals))
+	       (begin-pos
+	        (car first-interval))
+	       (end-pos (cdr last-interval)))
+          (when czm-preview--debug
+            (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
+	  (cons begin-pos end-pos))))))
 
 
 
-(defvar czm-preview--max-region-radius 5000)
 
 (defun czm-preview--first-visible-stale-region ()
   "Preview an appropriate chunk at top of window.
@@ -362,6 +364,11 @@ ending positions."
               ;; (when (< (- end beg ) 5000)
 	      ;;   (preview-region beg end))
               ))))
+      ;; TODO.  Okay, sometimes this functions calls
+      ;; czm-preview-find-first-stale-math-region with reversed
+      ;; arguments.  You're not really sure what's up with that.  For
+      ;; now you'll just "plug the hole" by having
+      ;; czm-preview-find-first-stale-math-region do nothing in such cases.
       (if (and nil (not (texmathp)))
           (progn
             (when czm-preview--debug
