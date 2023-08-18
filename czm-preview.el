@@ -154,7 +154,8 @@ BEG is the start of the modified region, END is the end of the
     (setq-local TeX-master czm-preview-TeX-master))
   (setq-local TeX-PDF-mode nil)
   (add-hook 'after-change-functions #'czm-preview--after-change-function nil t)
-  (add-hook 'post-command-hook #'czm-preview-post-command-function nil t))
+  (add-hook 'post-command-hook #'czm-preview-post-command-function nil t)
+  (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied))
 
 
 ;;  more generally, we should kill the job if the point moves into a
@@ -480,6 +481,12 @@ POS defaults to (point)."
 (defvar-local czm-preview--preview-region-already-run nil
   "Set to t after preview-region has been run for the first time.")
 
+(defvar-local czm-preview--style-hooks-applied nil
+  "Stores the region currently being processed by `preview-region'.")
+
+(defun czm-preview--flag-style-hooks-applied ()
+  (setq-local czm-preview--style-hooks-applied t))
+
 (defvar-local czm-preview-timer-enabled nil)
 (defvar-local preview-region--last-time nil)
 (defvar czm-preview-latex-prefix-directory "")
@@ -499,6 +506,7 @@ POS defaults to (point)."
   (and
    czm-preview-timer
    czm-preview-timer-enabled
+   czm-preview--style-hooks-applied
    (or (not preview-region--last-time)
        (> (float-time) (+ preview-region--last-time 0.25)))
    ;; (not czm-preview-active-region)
