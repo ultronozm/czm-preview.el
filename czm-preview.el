@@ -193,6 +193,8 @@ function being advised, and ARGS are its argument."
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
+(defvar czm-preview--debug nil)
+
 
 ;; (defvar preview-disabled nil)
 
@@ -250,6 +252,8 @@ function being advised, and ARGS are its argument."
   "Return convex hull of first state math intervals.
 Search between BEG and END.  Return a cons cell of beginning and
 ending positions."
+  (when czm-preview--debug
+    (message "czm-preview-find-first-stale-math-region: %s %s" beg end))
   (let* ((top-level-math-intervals
 	  (czm-preview--find-top-level-math-intervals beg end))
 	 (regions
@@ -310,10 +314,13 @@ ending positions."
 	     (begin-pos
 	      (car first-interval))
 	     (end-pos (cdr last-interval)))
+        (when czm-preview--debug
+          (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
 	(cons begin-pos end-pos)))))
 
 
 
+(defvar czm-preview--max-region-radius 5000)
 
 (defun czm-preview--first-visible-stale-region ()
   "Preview an appropriate chunk at top of window.
@@ -341,17 +348,33 @@ ending positions."
 	      (window-end))))
 	 (action
 	  (lambda (interval)
-	    (let ((inhibit-message t))
-	      (preview-region (car interval) (cdr interval))))))
+	    (let ((inhibit-message t)
+                  (beg (car interval))
+                  (end (cdr interval)))
+              (when czm-preview--debug
+                (message (format "previewing region (%s %s)" beg end)))
+              (preview-region beg end)
+              ;; (when (< (- end beg ) 5000)
+	      ;;   (preview-region beg end))
+              ))))
       (if (and nil (not (texmathp)))
-	  (when-let ((interval (czm-preview-find-first-stale-math-region above-window-start
-							       below-window-end)))
-	      (funcall action interval))
+          (progn
+            (when czm-preview--debug
+              (message "above-window-start: %s, below-window-end: %s" above-window-start below-window-end))
+	    (when-let ((interval (czm-preview-find-first-stale-math-region above-window-start
+							                   below-window-end)))
+	      (funcall action interval)))
 	(if-let ((interval (czm-preview-find-first-stale-math-region above-window-start
-							     (point))))
-	    (funcall action interval)
+							             (point))))
+            (progn
+              (when czm-preview--debug
+                (message "above-window-start: %s, point: %s" above-window-start (point)))
+	      (funcall action interval))
 	  (when-let ((interval (czm-preview-find-first-stale-math-region (point) below-window-end)))
-	      (funcall action interval)))))))
+            (progn
+              (when czm-preview--debug
+                (message "point: %s, below-window-end: %s" (point) below-window-end))
+	      (funcall action interval))))))))
 
 (defun czm-preview--find-top-level-math-intervals (start end)
   "Find top-level LaTeX math environments between START and END.
@@ -644,6 +667,8 @@ Display message in the minibuffer indicating old and new value."
 (defun czm-preview--override-region (begin end)
   "Run preview on region between BEGIN and END."
   (interactive "r")
+  (when czm-preview--debug
+    (message "Region: %s %s" begin end))
   (let ((TeX-region-extra
 	 ;; Write out counter information to region.
 	 (concat (preview--counter-information begin)
