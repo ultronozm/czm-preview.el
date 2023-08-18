@@ -337,16 +337,20 @@ ending positions."
 	((margin-search-paragraphs 3)
 	 (above-window-start
 	  (save-excursion
-	    (goto-char (window-start))
-	    (if (re-search-backward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
-		(match-beginning 0)
-	      (window-start))))
+            (let ((threshold (max (window-start)
+                                  (- (point) czm-preview--max-region-radius))))
+	      (goto-char threshold)
+	      (if (re-search-backward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
+		  (match-beginning 0)
+	        threshold))))
 	 (below-window-end
 	  (save-excursion
-	    (goto-char (window-end))
-	    (if (re-search-forward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
-		(match-beginning 0)
-	      (window-end))))
+            (let ((threshold (min (window-end)
+                                  (+ (point) czm-preview--max-region-radius))))
+	      (goto-char threshold)
+	      (if (re-search-forward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
+		  (match-beginning 0)
+	        threshold))))
 	 (action
 	  (lambda (interval)
 	    (let ((inhibit-message t)
