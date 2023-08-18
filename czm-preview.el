@@ -37,6 +37,7 @@
 ;; equation environment just above where the user is editing.  This is
 ;; useful for visualizing what you're working on.
 ;;
+;;
 ;; This package OVERRIDES the following functions from preview.el:
 ;; 
 ;; - preview-region
@@ -72,7 +73,97 @@
   :type 'string
   :group 'czm-preview)
 
+(defcustom czm-preview-max-region-radius 5000
+  "Maximum radius of region to be previewed."
+  :type 'number
+  :group 'czm-preview)
+
+;; because texlive 2023 seems super slow
+(when (equal (system-name) "Pauls-MBP-3")
+  (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2020/bin/x86_64-darwin/"))
+;; (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2023/bin/universal-darwin/")
+;; /usr/local/texlive/2023/bin/universal-darwin/
+
+(with-eval-after-load 'preview
+  (setq preview-LaTeX-command
+	`(
+	 ,(concat
+	  "%`"
+	  czm-preview-latex-prefix-directory
+	  "%l \"\\nonstopmode\\nofiles\\PassOptionsToPackage{")
+	 ("," . preview-required-option-list)
+	 "}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined" preview-default-preamble "\\fi}\"%' \"\\detokenize{\" %(t-filename-only) \"}\"")))
+
+(defun czm-preview-init ()
+  "Initialize advice and hooks for `czm-preview'.
+This should be once, after `preview' has been loaded."
+  (add-hook 'after-change-functions #'czm-preview--after-change-function nil t)
+  (add-hook 'post-command-hook #'czm-preview--post-command-function nil t)
+  (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied)
+  (advice-add preview-region :override #'czm-preview--override-region)
+  (advice-add preview-place-preview :around #'czm-preview--place-preview-advice)
+  (advice-add preview-parse-messages :override #'czm-preview--override-parse-messages)
+  (advice-add preview-kill-buffer-cleanup :override #'czm-preview--override-kill-buffer-cleanup)
+  (advice-add TeX-region-create :override #'czm-preview--TeX-region-create))
+
 (defvar czm-preview--active-env-start nil)
+
+(defvar-local czm-preview--active-region nil
+  "Stores the region currently being processed by `preview-region'.")
+
+(defvar czm-preview--debug nil)
+
+(defvar czm-preview--timer nil)
+
+(defvar-local czm-preview--preview-region-already-run nil
+  "Set to t after preview-region has been run for the first time.")
+
+(defvar-local czm-preview--style-hooks-applied nil
+  "Stores the region currently being processed by `preview-region'.")
+
+
+(defvar-local czm-preview--timer-enabled nil)
+(defvar-local preview-region--last-time nil)
+(defcustom czm-preview-latex-prefix-directory "")
+
+(defvar-local preview-region--begin nil)
+
+(defvar-local preview-region--end nil)
+
+
+
+(defun czm-preview--after-change-function (beg end _length)
+  "Function called after a change is made in `latex-mode' buffer.
+The function checks if the modification affects the active
+preview region and kills the current preview job if necessary.
+
+BEG is the start of the modified region, END is the end of the
+ region, and LENGTH is the length of the modification."
+  (when (eq major-mode 'latex-mode)
+    (when-let ((active-region-end (cdr czm-preview--active-region)))
+      (with-current-buffer (get-buffer-create "*DebugPreview*")
+	(goto-char (point-max))
+	(insert (format-time-string "%Y-%m-%d %T.%3N\n"))
+	(insert (format "region being modified: (%s %s)\n" beg end))
+	(insert (format "active preview region: (%s %s)\n"
+			(car czm-preview--active-region)
+			(cdr czm-preview--active-region))))
+      ;; Cancel any previews positioned after an active edit.
+      (when (< beg active-region-end)
+	(ignore-errors (TeX-kill-job))))))
+
+(defun czm-preview--post-command-function ()
+  "Function called after each command in `latex-mode' buffer."
+  (and (eq major-mode 'latex-mode)
+       czm-preview--active-region
+       (not (eq czm-preview--active-env-start
+		(car czm-preview--active-region)))
+       (texmathp)
+       (<= (car czm-preview--active-region) (point))
+       (< (point) (cdr czm-preview--active-region))
+       (ignore-errors (TeX-kill-job))))
+
+
 
 ;;;#autoload
 (defun czm-preview-current-environment ()
@@ -110,52 +201,15 @@ Return nil if not currently in such an environment."
    ;;   (point))
    ))
 
-(defvar-local czm-preview-active-region nil
-  "Stores the region currently being processed by `preview-region'.")
 
 
 
-(defun czm-preview--after-change-function (beg end _length)
-  "Function called after a change is made in `latex-mode' buffer.
-The function checks if the modification affects the active
-preview region and kills the current preview job if necessary.
-
-BEG is the start of the modified region, END is the end of the
- region, and LENGTH is the length of the modification."
-  (when (eq major-mode 'latex-mode)
-    (when-let ((active-region-end (cdr czm-preview-active-region)))
-      (with-current-buffer (get-buffer-create "*DebugPreview*")
-	(goto-char (point-max))
-	(insert (format-time-string "%Y-%m-%d %T.%3N\n"))
-	(insert (format "region being modified: (%s %s)\n" beg end))
-	(insert (format "active preview region: (%s %s)\n"
-			(car czm-preview-active-region)
-			(cdr czm-preview-active-region))))
-      ;;  Cancel any previews positioned after an active edit.
-      (when (< beg active-region-end)
-	(ignore-errors (TeX-kill-job))))))
-
-(defun czm-preview-post-command-function ()
-  "Function called after each command in `latex-mode' buffer."
-  (and (eq major-mode 'latex-mode)
-       czm-preview-active-region
-       (not (eq czm-preview--active-env-start
-		(car czm-preview-active-region)))
-       (texmathp)
-       (<= (car czm-preview-active-region) (point))
-       (< (point) (cdr czm-preview-active-region))
-       (ignore-errors (TeX-kill-job))))
 
 
 
-(defun czm-preview-setup ()
-  "Setup `czm-preview' in `latex-mode' buffers."
-  (when czm-preview-TeX-master
-    (setq-local TeX-master czm-preview-TeX-master))
-  (setq-local TeX-PDF-mode nil)
-  (add-hook 'after-change-functions #'czm-preview--after-change-function nil t)
-  (add-hook 'post-command-hook #'czm-preview-post-command-function nil t)
-  (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied))
+
+
+
 
 
 ;;  more generally, we should kill the job if the point moves into a
@@ -171,7 +225,7 @@ not obscure the environment itself.
 
 ORIG-FUNC is the original
 function being advised, and ARGS are its argument."
-  (setq czm-preview-active-region nil)
+  (setq czm-preview--active-region nil)
   (cl-destructuring-bind (snippet start end box counters tempdir place-opts) args
     (when czm-preview--active-env-start
       (save-excursion
@@ -184,7 +238,6 @@ function being advised, and ARGS are its argument."
 	    (setq end env-start)))))
     (apply orig-func (list snippet start end box counters tempdir place-opts))))
 
-(advice-add 'preview-place-preview :around #'czm-preview--place-preview-advice)
 
 (defun czm-preview-processes ()
   "Return list of preview processes for current LaTeX document."
@@ -194,7 +247,6 @@ function being advised, and ARGS are its argument."
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
-(defvar czm-preview--debug nil)
 
 
 ;; (defvar preview-disabled nil)
@@ -249,15 +301,13 @@ function being advised, and ARGS are its argument."
 ;;                   (cdr lst))))
 ;;         (goto-char pt)))))
 
-(defvar czm-preview--max-region-radius 5000)
-
 (defun czm-preview-find-first-stale-math-region (beg end)
   "Return convex hull of first state math intervals.
 Search between BEG and END.  Return a cons cell of beginning and
 ending positions."
   (when czm-preview--debug
     (message "czm-preview-find-first-stale-math-region: %s %s" beg end))
-  (when (< beg end (+ beg (* 2 czm-preview--max-region-radius)))
+  (when (< beg end (+ beg (* 2 czm-preview-max-region-radius)))
     (let* ((top-level-math-intervals
 	    (czm-preview--find-top-level-math-intervals beg end))
 	   (regions
@@ -340,7 +390,7 @@ ending positions."
 	 (above-window-start
 	  (save-excursion
             (let ((threshold (max (window-start)
-                                  (- (point) czm-preview--max-region-radius))))
+                                  (- (point) czm-preview-max-region-radius))))
 	      (goto-char threshold)
 	      (if (re-search-backward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
 		  (match-beginning 0)
@@ -348,7 +398,7 @@ ending positions."
 	 (below-window-end
 	  (save-excursion
             (let ((threshold (min (window-end)
-                                  (+ (point) czm-preview--max-region-radius))))
+                                  (+ (point) czm-preview-max-region-radius))))
 	      (goto-char threshold)
 	      (if (re-search-forward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
 		  (match-beginning 0)
@@ -487,41 +537,29 @@ POS defaults to (point)."
       (push (cons start-index end-index) intervals))
     (nreverse intervals)))
 
-(defvar czm-preview-timer nil)
-
-(defvar-local czm-preview--preview-region-already-run nil
-  "Set to t after preview-region has been run for the first time.")
-
-(defvar-local czm-preview--style-hooks-applied nil
-  "Stores the region currently being processed by `preview-region'.")
-
 (defun czm-preview--flag-style-hooks-applied ()
   (setq-local czm-preview--style-hooks-applied t))
-
-(defvar-local czm-preview-timer-enabled nil)
-(defvar-local preview-region--last-time nil)
-(defvar czm-preview-latex-prefix-directory "")
 
 (defun czm-preview-reset-timer ()
   "Reset the preview timer."
   (interactive)
-  (when czm-preview-timer
-    (cancel-timer czm-preview-timer)
-    (setq czm-preview-timer nil))
-  (setq czm-preview-timer
+  (when czm-preview--timer
+    (cancel-timer czm-preview--timer)
+    (setq czm-preview--timer nil))
+  (setq czm-preview--timer
         (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
   (interactive)
   (and
-   czm-preview-timer
-   czm-preview-timer-enabled
+   czm-preview--timer
+   czm-preview--timer-enabled
    czm-preview--style-hooks-applied
    font-lock-set-defaults ;; this is key
    (or (not preview-region--last-time)
        (> (float-time) (+ preview-region--last-time 0.25)))
-   ;; (not czm-preview-active-region)
+   ;; (not czm-preview--active-region)
    ;; (not (buffer-base-buffer)) ; preview doesn't work in indirect buffers
    (eq major-mode 'latex-mode)
    (cond
@@ -535,7 +573,7 @@ POS defaults to (point)."
 	 (unless (czm-preview-processes)
 	   (czm-preview-current-environment))))))
 
-(defcustom czm-preview-timer-interval 0.1
+(defcustom czm-preview--timer-interval 0.1
   "Interval for preview timer.
 For this to have any effect, it must be set before
 czm-preview-mode is activated for the first time."
@@ -549,26 +587,30 @@ czm-preview-mode is activated for the first time."
   :group 'czm-preview
   (if czm-preview-mode
     (progn
+      ; maybe this should be a separate setting?
+      (when czm-preview-TeX-master
+        (setq-local TeX-master czm-preview-TeX-master))
+      (setq-local TeX-PDF-mode nil)
       ;; Start the timer if it's not already running
       (czm-preview-reset-timer)
       ;; Enable the timer.
-      (setq-local czm-preview-timer-enabled t)
+      (setq-local czm-preview--timer-enabled t)
       (message "czm-preview-mode enabled."))
     ;; Disable the timer.
-    (setq-local czm-preview-timer-enabled nil)
+    (setq-local czm-preview--timer-enabled nil)
     ;; Hacky:
-    (setq-local czm-preview-active-region nil)
+    (setq-local czm-preview--active-region nil)
     (message "czm-preview-mode disabled.")))
 
 ;;;###autoload
-;; (defun czm-preview-timer-toggle ()
+;; (defun czm-preview--timer-toggle ()
 ;;   "Toggle the preview timer."
 ;;   (interactive)
-;;   (unless czm-preview-timer
-;;     (setq czm-preview-timer
+;;   (unless czm-preview--timer
+;;     (setq czm-preview--timer
 ;; 	  (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
-;;   (setq czm-preview-timer-enabled (not czm-preview-timer-enabled))
-;;   (if czm-preview-timer-enabled
+;;   (setq czm-preview--timer-enabled (not czm-preview--timer-enabled))
+;;   (if czm-preview--timer-enabled
 ;;       (progn
 ;; 	(add-hook 'before-save-hook #'czm-preview-current-environment nil t)
 ;; 	(unless czm-preview--preview-region-already-run
@@ -581,13 +623,13 @@ czm-preview-mode is activated for the first time."
 ;;     ; the timer is a buffer-local thing while hooks are global.  think
 ;;     ; of a better way and clear this up.
 ;;     (remove-hook 'before-save-hook #'czm-preview-current-environment t)
-;;     (setq czm-preview-active-region nil))
-;;   (message "czm-preview-timer-enabled = %s" czm-preview-timer-enabled))
+;;     (setq czm-preview--active-region nil))
+;;   (message "czm-preview--timer-enabled = %s" czm-preview--timer-enabled))
 
 
 ;; (defun czm-preview-activate-timer ()
 ;;   (interactive)
-;;   (setq czm-preview-timer
+;;   (setq czm-preview--timer
 ;; 	(run-with-idle-timer 0.1 t #'czm-preview--first-visible-stale-region-if-latex-mode))
 ;;   )
 
@@ -609,35 +651,17 @@ czm-preview-mode is activated for the first time."
 ;; Everything below here replaces stuff in preview.el, fixing the bug
 ;; noted in the comments of `czm-preview-find-first-stale-math-region'.
 ;; ============================================================
-(defvar-local preview-region--begin nil)
 
-(defvar-local preview-region--end nil)
 
 ;; (defun czm-preview-region-advice (orig-fun begin end &rest args)
-;;   "Set `czm-preview-active-region' buffer-local variable."
-;;   ;; (setq czm-preview-active-region (cons begin end))
+;;   "Set `czm-preview--active-region' buffer-local variable."
+;;   ;; (setq czm-preview--active-region (cons begin end))
 ;;   (setq preview-region--begin begin)
 ;;   (setq preview-region--end end)
 ;;   (apply orig-fun begin end args))
 
 ;; (advice-add 'preview-region :around #'czm-preview-region-advice)
 
-
-;; because texlive 2023 seems super slow
-(when (equal (system-name) "Pauls-MBP-3")
-  (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2020/bin/x86_64-darwin/"))
-;; (setq czm-preview-latex-prefix-directory "/usr/local/texlive/2023/bin/universal-darwin/")
-;; /usr/local/texlive/2023/bin/universal-darwin/
-
-(with-eval-after-load 'preview
-  (setq preview-LaTeX-command
-	`(
-	 ,(concat
-	  "%`"
-	  czm-preview-latex-prefix-directory
-	  "%l \"\\nonstopmode\\nofiles\\PassOptionsToPackage{")
-	 ("," . preview-required-option-list)
-	 "}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined" preview-default-preamble "\\fi}\"%' \"\\detokenize{\" %(t-filename-only) \"}\"")))
 
 ;;;###autoload
 (defun czm-preview-toggle-master ()
@@ -711,7 +735,7 @@ Display message in the minibuffer indicating old and new value."
   (setq-local preview-region--end end)
   (setq-local preview-region--last-time (float-time))
   (setq-local czm-preview--preview-region-already-run t)
-  (setq czm-preview-active-region (cons begin end))
+  (setq czm-preview--active-region (cons begin end))
   (with-current-buffer (get-buffer-create "*Debug Preview*")
     (goto-char (point-max))
     (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
@@ -724,7 +748,6 @@ Display message in the minibuffer indicating old and new value."
 			     preview-LaTeX-command-replacements)))
 
 
-(advice-add #'preview-region :override #'czm-preview--override-region)
 
 (defun czm-preview--override-parse-messages (open-closure)
   "Turn all preview snippets into overlays.
@@ -1081,7 +1104,6 @@ name(\\([^)]+\\))\\)\\|\
                                   snippet)) "Parser"))))))))
           (preview-call-hook 'close (car open-data) close-data))))))
 
-(advice-add #'preview-parse-messages :override #'czm-preview--override-parse-messages)
 
 
 
@@ -1102,7 +1124,6 @@ kept."
 
 
 
-(advice-add #'preview-kill-buffer-cleanup :override #'czm-preview--override-kill-buffer-cleanup)
 
 
 
@@ -1245,7 +1266,6 @@ original file."
             (set-buffer-modified-p nil)
           (save-buffer 0))))))
 
-(advice-add #'TeX-region-create :override #'czm-preview--TeX-region-create)
 
 
 
