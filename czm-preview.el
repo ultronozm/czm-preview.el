@@ -123,6 +123,11 @@ buffer.  For this reason, it is a global object.  This local
 variable keeps track of the buffers in which the timer should do
 anything.")
 
+(defvar-local czm-preview--last-image nil
+  "The preview image that was most recently disabled.
+This is used to avoid flickering or construction signs when a new
+preview is generated that replaces an old one.")
+
 ;;; ------------------------------ OVERRIDES ------------------------------
 
 ;; These overrides are copy/pasted from tex.el/preview.el and edited
@@ -832,10 +837,54 @@ visible during edits.  The copy does TODO"
   (overlay-put ovr 'preview-state 'disabled)
   (dolist (filename (overlay-get ovr 'filenames))
     (condition-case nil
-        (preview-delete-file filename)
+        (let* ((src (car filename))
+               (dst (expand-file-name
+                      "test.png"
+                      (file-name-parent-directory
+                       (file-name-directory (car filename))))))
+          (copy-file src dst t)
+          (setq czm-preview--last-image
+                (create-image dst 'png nil :ascent 90))
+
+          ;; (setq czm-preview--last-image (preview-make-image 'test))
+          (preview-delete-file filename)
+          )
       (file-error nil))
     (overlay-put ovr 'filenames nil)))
 
+(defun czm-preview-override-gs-place (ov snippet box run-buffer tempdir ps-file _imagetype)
+  "Generate an image placeholder rendered over by Ghostscript.
+This enters OV into all proper queues in order to make it render
+this image for real later, and returns the overlay after setting
+a placeholder image.  SNIPPET gives the number of the
+snippet in question for the file to be generated.
+BOX is a bounding box if we already know one via TeX.
+RUN-BUFFER is the buffer of the TeX process,
+TEMPDIR is the correct copy of `TeX-active-tempdir',
+PS-FILE is a copy of `preview-ps-file', IMAGETYPE is the image type
+for the file extension."
+  (overlay-put ov 'filenames
+               (unless (eq ps-file t)
+                 (list
+                  (preview-make-filename
+                   (or ps-file
+                       (format "preview.%03d" snippet))
+                   tempdir))))
+  (overlay-put ov 'queued
+               (vector box nil snippet))
+  ;; (overlay-put ov 'preview-image
+  ;;              (list (cons 'image (cdr preview-nonready-icon))))
+  (if czm-preview--last-image
+      (progn 
+        (overlay-put ov 'preview-image
+                     (list (cons 'image (cdr czm-preview--last-image))))
+        (setq czm-preview--last-image nil))
+    (overlay-put ov 'preview-image
+                 (list (preview-icon-copy preview-nonready-icon))))
+  ;; (when czm-preview--last-image
+  ;;   (overlay-put ov 'preview-image czm-preview--last-image))
+  (preview-add-urgentization #'preview-gs-urgentize ov run-buffer)
+  (list ov))
 
 ;;; ------------------------------ HOOKS ------------------------------
 
@@ -1123,6 +1172,7 @@ smallest interval that contains this group."
   (advice-add 'TeX-process-check :override #'czm-preview-override-TeX-process-check)
   (advice-add 'preview-inactive-string :override #'czm-preview-override-inactive-string)
   (advice-add 'preview-disable :override #'czm-preview-override-preview-disable)  
+  (advice-add 'preview-gs-place :override #'czm-preview-override-gs-place)
   )
 
 (defun czm-preview--close ()
@@ -1138,6 +1188,7 @@ smallest interval that contains this group."
   (advice-remove 'TeX-process-check #'czm-preview-override-TeX-process-check)
   (advice-remove 'preview-inactive-string #'czm-preview-override-inactive-string)
   (advice-remove 'preview-disable #'czm-preview-override-preview-disable)
+  (advice-remove 'preview-gs-place #'czm-preview-override-gs-place)
   )
 
 (defun czm-preview--reset-timer ()
