@@ -131,6 +131,8 @@ preview is generated that replaces an old one.")
 (defvar-local czm-preview--disabled-region-begin nil
   "Beginning of the preview region that was most recently disabled.")
 
+(defvar-local czm-preview--keepalive t)
+
 ;;; ------------------------------ OVERRIDES ------------------------------
 
 ;; These overrides are copy/pasted from tex.el/preview.el and edited
@@ -921,6 +923,7 @@ BEG is the start of the modified region, END is the end of the
 If a region is currently being previewed, and it's not a
 \"current environment\" preview, and we execute any command
 whatsoever with point inside that region, then kill the preview."
+  (setq-local czm-preview--keepalive t)
   (and (eq major-mode 'latex-mode)
        ;; a region is currently being previewed
        czm-preview--active-region
@@ -1155,6 +1158,7 @@ smallest interval that contains this group."
       ;; now you'll just "plug the hole" by having
       ;; czm-preview--first-stale-chunk do nothing in such cases.
       (let (interval)
+        (setq-local czm-preview--keepalive t)
         (cond
          ((setq interval (czm-preview--first-stale-chunk
                           above-window-beg
@@ -1167,7 +1171,11 @@ smallest interval that contains this group."
                           below-window-end))
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point) below-window-end))
-	  (funcall action interval)))))))
+	  (funcall action interval))
+         (t
+          (setq-local czm-preview--keepalive nil)
+          )
+         )))))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
@@ -1177,6 +1185,7 @@ smallest interval that contains this group."
    czm-preview--timer-enabled
    czm-preview--style-hooks-applied
    font-lock-set-defaults ;; this is key
+   czm-preview--keepalive
    (or (not czm-preview--region-time)
        (> (float-time) (+ czm-preview--region-time 0.25)))
    ;; (not czm-preview--active-region)
@@ -1248,6 +1257,7 @@ smallest interval that contains this group."
       (czm-preview--reset-timer)
       ;; Enable the timer.
       (setq-local czm-preview--timer-enabled t)
+      (setq-local czm-preview--keepalive t)
       (message "czm-preview-mode enabled."))
     ;; Disable the timer.
     (setq-local czm-preview--timer-enabled nil)
