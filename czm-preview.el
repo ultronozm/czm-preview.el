@@ -106,17 +106,7 @@ czm-preview-mode is activated for the first time."
 	 ("," . preview-required-option-list)
 	 "}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined" preview-default-preamble "\\fi}\"%' \"\\detokenize{\" %(t-filename-only) \"}\"")))
 
-(defun czm-preview-init ()
-  "Initialize advice and hooks for `czm-preview'.
-This should be once, after `preview' has been loaded."
-  (add-hook 'after-change-functions #'czm-preview--after-change-function nil t)
-  (add-hook 'post-command-hook #'czm-preview--post-command-function nil t)
-  (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied)
-  (advice-add preview-region :override #'czm-preview--override-region)
-  (advice-add preview-place-preview :around #'czm-preview--place-preview-advice)
-  (advice-add preview-parse-messages :override #'czm-preview--override-parse-messages)
-  (advice-add preview-kill-buffer-cleanup :override #'czm-preview--override-kill-buffer-cleanup)
-  (advice-add TeX-region-create :override #'czm-preview--TeX-region-create))
+
 
 (defvar czm-preview--active-env-start nil)
 
@@ -598,6 +588,26 @@ POS defaults to (point)."
 	   (czm-preview-current-environment))))))
 
 (defun czm-preview--init ()
+  "Initialize advice and hooks for `czm-preview'."
+  (add-hook 'after-change-functions #'czm-preview--after-change-function nil t)
+  (add-hook 'post-command-hook #'czm-preview--post-command-function nil t)
+  (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied nil t)
+  (advice-add 'preview-region :override #'czm-preview--override-region)
+  (advice-add 'preview-place-preview :around #'czm-preview--place-preview-advice)
+  (advice-add 'preview-parse-messages :override #'czm-preview--override-parse-messages)
+  (advice-add 'preview-kill-buffer-cleanup :override #'czm-preview--override-kill-buffer-cleanup)
+  (advice-add 'TeX-region-create :override #'czm-preview--TeX-region-create))
+
+(defun czm-preview--close ()
+  "Remove advice and hooks for `czm-preview'."
+  (remove-hook 'after-change-functions #'czm-preview--after-change-function t)
+  (remove-hook 'post-command-hook #'czm-preview--post-command-function t)
+  (remove-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied t)
+  (advice-remove 'preview-region #'czm-preview--override-region)
+  (advice-remove 'preview-place-preview #'czm-preview--place-preview-advice)
+  (advice-remove 'preview-parse-messages #'czm-preview--override-parse-messages)
+  (advice-remove 'preview-kill-buffer-cleanup #'czm-preview--override-kill-buffer-cleanup)
+  (advice-remove 'TeX-region-create #'czm-preview--TeX-region-create))
 
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
@@ -606,6 +616,7 @@ POS defaults to (point)."
   :group 'czm-preview
   (if czm-preview-mode
     (progn
+      (czm-preview--init)
       ; maybe this should be a separate setting?
       (when czm-preview-TeX-master
         (setq-local TeX-master czm-preview-TeX-master))
@@ -619,6 +630,10 @@ POS defaults to (point)."
     (setq-local czm-preview--timer-enabled nil)
     ;; Hacky:
     (setq-local czm-preview--active-region nil)
+
+    ;; I think the hooks add a benefit anyway, right?  Maybe just want a separate function
+    ;; (czm-preview--close)
+
     (message "czm-preview-mode disabled.")))
 
 ;;;###autoload
