@@ -100,18 +100,16 @@ czm-preview-mode is activated for the first time."
 (defvar czm-preview--debug nil
   "If non-nil, print debug messages.")
 
-
-
 ;;; ------------------------------ OVERRIDES ------------------------------
-
 
 (defun czm-preview-override-TeX-process-check (name)
   "Check if a process for the TeX document NAME already exist.
 If so, give the user the choice of aborting the process or the current
 command.
 
-OVERRIDE DIFFERENCES: We never kill the current process.  We do
-not ask the user about this."
+OVERRIDE DIFFERENCES: We never kill an ongoing process.  If there
+is a conflict, we always abort the process that we are about to
+run.  We do not ask the user to make a decision."
   (let (process)
     (while (and (setq process (TeX-process name))
                 (eq (process-status process) 'run))
@@ -343,8 +341,6 @@ END and the current time) in buffer-local variables.  TODO: why?"
 			     (TeX-command-expand
 			      (preview-string-expand preview-LaTeX-command))
 			     preview-LaTeX-command-replacements)))
-
-
 
 (defun czm-preview-override-parse-messages (open-closure)
   "Turn all preview snippets into overlays.
@@ -721,44 +717,71 @@ name(\\([^)]+\\))\\)\\|\
                                   snippet)) "Parser"))))))))
           (preview-call-hook 'close (car open-data) close-data))))))
 
-
-
-
-
 (defun czm-preview-override-kill-buffer-cleanup (&optional buf)
   "This is a cleanup function just for use in hooks.
 Cleans BUF or current buffer.  The difference to
 `preview-clearout-buffer' is that previews
 associated with the last buffer modification time are
-kept."
+kept.
+
+OVERRIDE DIFFERENCE: we add \"unless (buffer-base-buffer)\" in
+the appropriate place, so that this function is not called when
+an *indirect* buffer is called.  This is one of many changes that
+allow us to work with previews in indirect buffers."
   (with-current-buffer (or buf (current-buffer))
     (unless (buffer-base-buffer)    ; do not clearout indirect buffers
       (save-restriction
 	(widen)
 	(preview-clearout (point-min) (point-max) (visited-file-modtime))))))
 
+(defun czm-preview--valid-environment-start ()
+  "Return start of current equation-like environment.
+Return nil if not currently in such an environment."
+  (and
+   (texmathp)
+   (member (car texmathp-why) czm-preview-valid-environments)
+   (cdr texmathp-why)))
+
+(defun czm-preview--around-place-preview (orig-func &rest args)
+  "Used as :around advice for the function `preview-place-preview'.
+The purpose of this wrapper is to conditionally modify the
+overlay positioning.  If `czm-preview--active-environment-start'
+is non-nil and equal to the starting position of the current
+environment, then the start and end positions for the overlay are
+both adjusted to be at the start of the environment.  The result
+is that the overlay does not obscure the environment itself.
+
+ORIG-FUNC is the original function being advised, and ARGS are
+its argument."
+  (setq czm-preview--active-region nil)
+  (cl-destructuring-bind (snippet start end box counters tempdir place-opts) args
+    ;; maybe we should do this more aggressively? that is, we include
+    ;; in our timer function a step that, if we've already previewed
+    ;; everything else nearby, looks at the current environment, and
+    ;; previews that if it's been edited, replacing the previous
+    ;; preview?  maybe?  would be nice to get rid of the additional
+    ;; function.
+    ;;
+    ;; Maybe we can just check here if the start of the current
+    ;; environment coincides with the start of the active environment?
+    (when czm-preview--active-environment-start
+      (save-excursion
+	(beginning-of-line)
+	(when-let ((env-start (czm-preview--valid-environment-start)))
+	  (when (eq env-start czm-preview--active-environment-start)
+	    (preview-clearout start end tempdir)
+	    (setq czm-preview--active-environment-start nil)
+	    (setq start env-start)
+	    (setq end env-start)))))
+    (apply orig-func (list snippet start end box counters tempdir place-opts))))
 
 
 
 
+;;  more generally, we should kill the job if the point moves into a
+;;  math environment in the region?
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+;;; !!!!
 
 
 (defvar czm-preview--active-environment-start nil)
@@ -776,16 +799,17 @@ variable keeps track of the buffers in which the timer should do
 anything.")
 
 
-
+;;; ------------------------------ HOOKS ------------------------------
 
 (defun czm-preview--after-change-function (beg end _length)
-  "Function called after a change is made in `latex-mode' buffer.
-The function checks if the modification affects the active
-preview region and kills the current preview job if necessary.
+  "Called after changes in `czm-preview-mode'.
+Checks if the modification affects the active preview region and,
+if so, kills the current preview job.
 
 BEG is the start of the modified region, END is the end of the
  region, and LENGTH is the length of the modification."
   (when (eq major-mode 'latex-mode)
+    ;; If a region is currently being previewed...
     (when-let ((active-region-end (cdr czm-preview--active-region)))
       (with-current-buffer (get-buffer-create "*DebugPreview*")
 	(goto-char (point-max))
@@ -794,14 +818,23 @@ BEG is the start of the modified region, END is the end of the
 	(insert (format "active preview region: (%s %s)\n"
 			(car czm-preview--active-region)
 			(cdr czm-preview--active-region))))
-      ;; Cancel any previews positioned after an active edit.
+      ;; ...and the edit occurs before that region, then cancel the
+      ;; preview.
       (when (< beg active-region-end)
 	(ignore-errors (TeX-kill-job))))))
 
 (defun czm-preview--post-command-function ()
-  "Function called after each command in `latex-mode' buffer."
+  "Function called after each command in `czm-preview-mode'.
+If a region is currently being previewed, and it's not a
+\"current environment\" preview, and we execute any command
+whatsoever with point inside that region, then kill the preview."
   (and (eq major-mode 'latex-mode)
+       ;; a region is currently being previewed
        czm-preview--active-region
+       ;; it's not a "current environment" preview.  kinda hacky.
+       ;; maybe eliminate this, if you end up eliminating that?  I
+       ;; mean, why not just always position the preview at the start
+       ;; of the environment?
        (not (eq czm-preview--active-environment-start
 		(car czm-preview--active-region)))
        (texmathp)
@@ -810,74 +843,18 @@ BEG is the start of the modified region, END is the end of the
        (ignore-errors (TeX-kill-job))))
 
 
+(defun czm-preview--flag-style-hooks-applied ()
+  "Set `czm-preview--style-hooks-applied' to t.
+This is a hook function for `TeX-update-style-hook'.  It is used
+to make sure we don't run `preview-region' before the style hooks
+have been applied.  This is needed to be able to call `texmathp',
+which in turn calls `LaTeX-verbatim-p', which in turn calls
+`syntax-propertize'."
+  (setq-local czm-preview--style-hooks-applied t))
 
-;;;#autoload
-(defun czm-preview-current-environment ()
-  "Generate preview just before current environment.
-If the environment already has an (inactive) overlay generated by
-preview, then move that overlay to just before the environment,
-where it can be seen."
-  (interactive ())
-  (when-let ((env-start (czm-preview--valid-environment-start)))
-    (if-let ((ov
-	      (cl-find-if
-	       (lambda (ov) (overlay-get ov 'preview-state))
-	       (overlays-at (point)))))
-	(move-overlay ov env-start env-start)
-      ;; (preview-clearout-at-point)
-      (if (czm-preview-processes)
-	  (error "Existing TeX process")
-	(setq czm-preview--active-environment-start env-start)
-	(save-mark-and-excursion
-	  (LaTeX-mark-environment)
-	  (let ((inhibit-message t))
-	    (preview-region (point) (mark))))
-	;; (preview-environment 0)
-	))))
+;;; ------------------------------ HELPERS ------------------------------
 
-(defun czm-preview--valid-environment-start ()
-  "Return start of current equation or align environment.
-Return nil if not currently in such an environment."
-  (and
-   (texmathp)
-   (member (car texmathp-why) czm-preview-valid-environments)
-   (cdr texmathp-why)))
-
-
-
-
-
-
-
-
-;;  more generally, we should kill the job if the point moves into a
-;;  math environment in the region.
-
-(defun czm-preview--place-preview-advice (orig-func &rest args)
-  "Modify overlay positioning of `preview-place-preview'.
-If `czm-preview--active-environment-start' is non-nil and equal to the
-starting position of the current environment, then the start and
-end positions for the overlay are both adjusted to be at the
-start of the environment.  The result is that the overlay does
-not obscure the environment itself.
-
-ORIG-FUNC is the original
-function being advised, and ARGS are its argument."
-  (setq czm-preview--active-region nil)
-  (cl-destructuring-bind (snippet start end box counters tempdir place-opts) args
-    (when czm-preview--active-environment-start
-      (save-excursion
-	(beginning-of-line)
-	(when-let ((env-start (czm-preview--valid-environment-start)))
-	  (when (eq env-start czm-preview--active-environment-start)
-	    (preview-clearout start end tempdir)
-	    (setq czm-preview--active-environment-start nil)
-	    (setq start env-start)
-	    (setq end env-start)))))
-    (apply orig-func (list snippet start end box counters tempdir place-opts))))
-
-
-(defun czm-preview-processes ()
+(defun czm-preview--processes ()
   "Return list of preview processes for current LaTeX document."
   (or
    (TeX-process
@@ -885,122 +862,17 @@ function being advised, and ARGS are its argument."
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
-
-
-(defun czm-preview-find-first-stale-math-region (beg end)
-  "Return convex hull of first state math intervals.
-Search between BEG and END.  Return a cons cell of beginning and
-ending positions."
-  (when czm-preview--debug
-    (message "czm-preview-find-first-stale-math-region: %s %s" beg end))
-  (when (< beg end (+ beg (* 2 czm-preview-max-region-radius)))
-    (let* ((top-level-math-intervals
-	    (czm-preview--find-top-level-math-intervals beg end))
-	   (regions
-	    (mapcar (lambda (interval)
-		      (buffer-substring-no-properties
-		       (car interval) (cdr interval)))
-		    top-level-math-intervals))
-	   (staleness
-	    (cl-mapcar (lambda (interval region)
-		         (and
-			  (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
-			  (not (string-match-p (regexp-opt '("<++>" "<+++>"))
-					       region))))
-		       top-level-math-intervals regions))
-	   (_line-numbers         ; only for stuff occuring on one line
-	    (mapcar (lambda (interval)
-		      (let ((line-beg (line-number-at-pos (car interval) ))
-			    (line-end (line-number-at-pos (cdr interval) )))
-		        (when (equal line-beg line-end)
-			  line-beg)))
-		    top-level-math-intervals)))
-
-      ;;  run preview-region on the first continguous stale chunk
-      (when-let ((first-visible-chunk
-		  (car (czm-preview--non-nil-intervals staleness))))
-        (let* ((first-interval-index (car first-visible-chunk))
-	       (last-interval-index (cdr first-visible-chunk))
-	       (first-interval (nth first-interval-index top-level-math-intervals))
-	       (last-interval (nth last-interval-index top-level-math-intervals))
-	       (begin-pos
-	        (car first-interval))
-	       (end-pos (cdr last-interval)))
-          (when czm-preview--debug
-            (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
-	  (cons begin-pos end-pos))))))
-
-
-
-
-(defun czm-preview--first-visible-stale-region ()
-  "Preview an appropriate chunk at top of window.
-
-  Identify the top level math intervals in the visible portion of
-  the buffer.  Find the first contiguous group of intervals at
-  which there are no active or inactive previews at point.  Call
-  `preview-region' on the smallest interval that contains this
-  group."
-  (interactive)
-  (when czm-preview--debug
-    (message "czm-preview--first-visible-stale-region"))
-  (unless (czm-preview-processes)
-    (let*
-	((margin-search-paragraphs 3)
-	 (above-window-start
-	  (save-excursion
-            (let ((threshold (max (window-start)
-                                  (- (point) czm-preview-max-region-radius))))
-	      (goto-char threshold)
-              (backward-paragraph margin-search-paragraphs)
-              (point))))
-	 (below-window-end
-	  (save-excursion
-            (let ((threshold (min (window-end)
-                                  (+ (point) czm-preview-max-region-radius))))
-	      (goto-char threshold)
-              (forward-paragraph margin-search-paragraphs)
-              (point))))
-	 (action
-	  (lambda (interval)
-	    (let ((inhibit-message t)
-                  (beg (car interval))
-                  (end (cdr interval)))
-              (when czm-preview--debug
-                (message (format "previewing region (%s %s)" beg end)))
-              (preview-region beg end)))))
-      ;; TODO.  Okay, sometimes this functions calls
-      ;; czm-preview-find-first-stale-math-region with reversed
-      ;; arguments.  You're not really sure what's up with that.  For
-      ;; now you'll just "plug the hole" by having
-      ;; czm-preview-find-first-stale-math-region do nothing in such cases.
-      (let (interval)
-        (cond
-         ((setq interval (czm-preview-find-first-stale-math-region
-                          above-window-start
-			  (point)))
-          (when czm-preview--debug
-            (message "above-window-start: %s, point: %s" above-window-start (point)))
-	  (funcall action interval))
-         ((setq interval (czm-preview-find-first-stale-math-region
-                          (point)
-                          below-window-end))
-          (when czm-preview--debug
-            (message "point: %s, below-window-end: %s" (point) below-window-end))
-	  (funcall action interval)))))))
-
-(defun czm-preview--find-top-level-math-intervals (start end)
-  "Find top-level LaTeX math environments between START and END.
-Returns a list of cons cells representing the intervals, with
-start and end positions in buffer."
+(defun czm-preview--find-top-level-math-intervals (beg end)
+  "Find top-level LaTeX math envs between BEG and END.
+Return list of cons cells containing beg and end positions."
   (save-excursion
     (let ((math-intervals '()))
-      (goto-char start)
+      (goto-char beg)
       (while (re-search-forward "\\(\\\\begin{\\([^{}]*\\)}\\|\\$\\|\\\\\\[\\)" end t)
 	(let ((env-text (match-string 0))
 	      (env-name (match-string 2))
 	      (env-after-begin (match-end 1))
-	      (interval-start (match-beginning 0)))
+	      (interval-beg (match-beginning 0)))
 	  (when
 	      (and
 	       (or
@@ -1023,9 +895,9 @@ start and end positions in buffer."
 			     (re-search-forward
 			      (concat "\\\\end{" (regexp-quote env-name) "}")
 			      end t))
-		       (let* ((contents-start
+		       (let* ((contents-beg
 			       (save-excursion
-				 (goto-char interval-start)
+				 (goto-char interval-beg)
 				 (end-of-line)
 				 (point)))
 			      (contents-end
@@ -1034,7 +906,7 @@ start and end positions in buffer."
 				 (point))))
 			 (setq contents
 			       (buffer-substring-no-properties
-				contents-start
+				contents-beg
 				contents-end)))))
 	       ;; $...$
 	       ((string= env-text "$")
@@ -1045,7 +917,7 @@ start and end positions in buffer."
 		  (setq interval-end
 			(re-search-forward "\\$" line-end t))
 		  (setq contents
-			(buffer-substring-no-properties (1+ interval-start) (1- (point))))))
+			(buffer-substring-no-properties (1+ interval-beg) (1- (point))))))
 	       ;; \[...\]
 	       ((string= env-text "\\[")
 		(setq interval-end
@@ -1053,11 +925,11 @@ start and end positions in buffer."
 		(when interval-end
 		  (setq contents
 			(buffer-substring-no-properties
-			 (+ 2 interval-start)
+			 (+ 2 interval-beg)
 			 (- (point) 2))))))
-	      (and interval-start interval-end
+	      (and interval-beg interval-end
 		   (string-match-p "[^[:space:]\n\r]" contents) ; check that contents are non-empty
-		   (push (cons interval-start interval-end) math-intervals))))))
+		   (push (cons interval-beg interval-end) math-intervals))))))
       (nreverse math-intervals))))
 
 (defun czm-preview--active-or-inactive-preview-at-point-p (&optional pos)
@@ -1069,7 +941,7 @@ POS defaults to (point)."
 		   '(active inactive)))
 
 (defun czm-preview--non-nil-intervals (input-list)
-  "Return a list of intervals of non-nil values in INPUT-LIST."
+  "Return list of intervals of non-nil values in INPUT-LIST."
   (let ((intervals nil)
         (start-index nil)
         (end-index nil))
@@ -1087,23 +959,99 @@ POS defaults to (point)."
       (push (cons start-index end-index) intervals))
     (nreverse intervals)))
 
-(defun czm-preview--flag-style-hooks-applied ()
-  "Set `czm-preview--style-hooks-applied' to t.
-This is a hook function for `TeX-update-style-hook'.  Used to
-make sure we don't run `preview-region' before the style hooks
-have been applied.  This is needed to be able to call `texmathp',
-which in turn calls `LaTeX-verbatim-p', which in turn calls
-`syntax-propertize'."
-  (setq-local czm-preview--style-hooks-applied t))
+(defun czm-preview--first-stale-chunk (beg end)
+  "Get convex hull of initial stale envs between BEG and END.
+Return cons cell of beginning and ending positions."
+  (when czm-preview--debug
+    (message "czm-preview--first-stale-chunk: %s %s" beg end))
+  (when (< beg end (+ beg (* 2 czm-preview-max-region-radius)))
+    (let* ((top-level-math-intervals
+	    (czm-preview--find-top-level-math-intervals beg end))
+	   (regions
+	    (mapcar (lambda (interval)
+		      (buffer-substring-no-properties
+		       (car interval) (cdr interval)))
+		    top-level-math-intervals))
+	   (staleness
+	    (cl-mapcar (lambda (interval region)
+		         (and
+			  (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
+			  (not (string-match-p (regexp-opt '("<++>" "<+++>"))
+					       region))))
+		       top-level-math-intervals regions))
+	   (_line-numbers         ; only for stuff occuring on one line
+	    (mapcar (lambda (interval)
+		      (let ((line-beg (line-number-at-pos (car interval) ))
+			    (line-end (line-number-at-pos (cdr interval) )))
+		        (when (equal line-beg line-end)
+			  line-beg)))
+		    top-level-math-intervals)))
+      (when-let ((first-visible-chunk
+		  (car (czm-preview--non-nil-intervals staleness))))
+        (let* ((first-interval-index (car first-visible-chunk))
+	       (last-interval-index (cdr first-visible-chunk))
+	       (first-interval (nth first-interval-index top-level-math-intervals))
+	       (last-interval (nth last-interval-index top-level-math-intervals))
+	       (begin-pos
+	        (car first-interval))
+	       (end-pos (cdr last-interval)))
+          (when czm-preview--debug
+            (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
+	  (cons begin-pos end-pos))))))
 
-(defun czm-preview-reset-timer ()
-  "Reset the preview timer."
+(defun czm-preview--preview-some-chunk ()
+  "Run `preview-region' on an appropriate region.
+Identify top level math intervals in the window.  Find the first
+contiguous group of intervals at which there are no active or
+inactive previews at point.  Call `preview-region' on the
+smallest interval that contains this group."
   (interactive)
-  (when czm-preview--timer
-    (cancel-timer czm-preview--timer)
-    (setq czm-preview--timer nil))
-  (setq czm-preview--timer
-        (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
+  (when czm-preview--debug
+    (message "czm-preview--preview-some-chunk"))
+  (unless (czm-preview--processes)
+    (let*
+	((margin-search-paragraphs 3)
+	 (above-window-beg
+	  (save-excursion
+            (let ((threshold (max (window-beg)
+                                  (- (point) czm-preview-max-region-radius))))
+	      (goto-char threshold)
+              (backward-paragraph margin-search-paragraphs)
+              (point))))
+	 (below-window-end
+	  (save-excursion
+            (let ((threshold (min (window-end)
+                                  (+ (point) czm-preview-max-region-radius))))
+	      (goto-char threshold)
+              (forward-paragraph margin-search-paragraphs)
+              (point))))
+	 (action
+	  (lambda (interval)
+	    (let ((inhibit-message t)
+                  (beg (car interval))
+                  (end (cdr interval)))
+              (when czm-preview--debug
+                (message (format "previewing region (%s %s)" beg end)))
+              (preview-region beg end)))))
+      ;; TODO.  Okay, sometimes this functions calls
+      ;; czm-preview--first-stale-chunk with reversed
+      ;; arguments.  You're not really sure what's up with that.  For
+      ;; now you'll just "plug the hole" by having
+      ;; czm-preview--first-stale-chunk do nothing in such cases.
+      (let (interval)
+        (cond
+         ((setq interval (czm-preview--first-stale-chunk
+                          above-window-beg
+			  (point)))
+          (when czm-preview--debug
+            (message "above-window-beg: %s, point: %s" above-window-beg (point)))
+	  (funcall action interval))
+         ((setq interval (czm-preview--first-stale-chunk
+                          (point)
+                          below-window-end))
+          (when czm-preview--debug
+            (message "point: %s, below-window-end: %s" (point) below-window-end))
+	  (funcall action interval)))))))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
@@ -1118,12 +1066,11 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    ;; (not czm-preview--active-region)
    (eq major-mode 'latex-mode)
    (cond
-    ((czm-preview--first-visible-stale-region))
+    ((czm-preview--preview-some-chunk))
+    ;; TODO: looks like you were trying this as a work in progress.  Flesh it out?
     (nil (texmathp)
-	 (unless (czm-preview-processes)
+	 (unless (czm-preview--processes)
 	   (czm-preview-current-environment))))))
-
-
 
 (defun czm-preview--init ()
   "Initialize advice and hooks for `czm-preview'."
@@ -1131,7 +1078,7 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
   (add-hook 'post-command-hook #'czm-preview--post-command-function nil t)
   (add-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied nil t)
   (advice-add 'preview-region :override #'czm-preview-override-region)
-  (advice-add 'preview-place-preview :around #'czm-preview--place-preview-advice)
+  (advice-add 'preview-place-preview :around #'czm-preview--around-place-preview)
   (advice-add 'preview-parse-messages :override #'czm-preview-override-parse-messages)
   (advice-add 'preview-kill-buffer-cleanup :override #'czm-preview-override-kill-buffer-cleanup)
   (advice-add 'TeX-region-create :override #'czm-preview-override-TeX-region-create)
@@ -1143,11 +1090,22 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
   (remove-hook 'post-command-hook #'czm-preview--post-command-function t)
   (remove-hook 'TeX-update-style-hook #'czm-preview--flag-style-hooks-applied t)
   (advice-remove 'preview-region #'czm-preview-override-region)
-  (advice-remove 'preview-place-preview #'czm-preview--place-preview-advice)
+  (advice-remove 'preview-place-preview #'czm-preview--around-place-preview)
   (advice-remove 'preview-parse-messages #'czm-preview-override-parse-messages)
   (advice-remove 'preview-kill-buffer-cleanup #'czm-preview-override-kill-buffer-cleanup)
   (advice-remove 'TeX-region-create #'czm-preview-override-TeX-region-create)
   (advice-remove 'TeX-process-check #'czm-preview-override-TeX-process-check))
+
+(defun czm-preview--reset-timer ()
+  "Reset the preview timer."
+  (interactive)
+  (when czm-preview--timer
+    (cancel-timer czm-preview--timer)
+    (setq czm-preview--timer nil))
+  (setq czm-preview--timer
+        (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
+
+;;; --------------------------------- COMMANDS ---------------------------------
 
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
@@ -1157,12 +1115,13 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
   (if czm-preview-mode
     (progn
       (czm-preview--init)
-      ; maybe this should be a separate setting?
+      ; TODO: these should be decoupled
       (when czm-preview-TeX-master
         (setq-local TeX-master czm-preview-TeX-master))
       (setq-local TeX-PDF-mode nil)
+      
       ;; Start the timer if it's not already running
-      (czm-preview-reset-timer)
+      (czm-preview--reset-timer)
       ;; Enable the timer.
       (setq-local czm-preview--timer-enabled t)
       (message "czm-preview-mode enabled."))
@@ -1172,11 +1131,13 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
     (setq-local czm-preview--active-region nil)
 
     ;; I think the hooks add a benefit anyway, right?  Maybe just want a separate function
-    ;; (czm-preview--close)
+    (czm-preview--close)
 
     (message "czm-preview-mode disabled.")))
 
 
+
+;; TODO: sort the rest of this stuff out.
 
 ;;;###autoload
 (defun czm-preview-toggle-master ()
@@ -1202,6 +1163,32 @@ Display message in the minibuffer indicating old and new value."
 
                              
 
+
+
+
+;;;#autoload
+(defun czm-preview-current-environment ()
+  "Generate preview just before current environment.
+If the environment already has an (inactive) overlay generated by
+preview, then move that overlay to just before the environment,
+where it can be seen."
+  (interactive ())
+  (when-let ((env-start (czm-preview--valid-environment-start)))
+    (if-let ((ov
+	      (cl-find-if
+	       (lambda (ov) (overlay-get ov 'preview-state))
+	       (overlays-at (point)))))
+	(move-overlay ov env-start env-start)
+      ;; (preview-clearout-at-point)
+      (if (czm-preview--processes)
+	  (error "Existing TeX process")
+	(setq czm-preview--active-environment-start env-start)
+	(save-mark-and-excursion
+	  (LaTeX-mark-environment)
+	  (let ((inhibit-message t))
+	    (preview-region (point) (mark))))
+	;; (preview-environment 0)
+	))))
 
 
 
