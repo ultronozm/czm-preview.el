@@ -790,12 +790,48 @@ its argument."
     (apply orig-func (list snippet start end box counters tempdir place-opts))))
 
 
+(defun czm-preview-override-inactive-string (ov)
+  "Generate before-string for an inactive preview overlay OV.
+This is for overlays where the source text has been clicked
+visible.  For efficiency reasons it is expected that the buffer
+is already selected and unnarrowed.
+
+OVERRIDE DIFFERENCE: we take `(overlay-get ov 'preview-image)'
+rather than `preview-icon'."
+  (concat
+   (preview-make-clickable (overlay-get ov 'preview-map)
+                           (overlay-get ov 'preview-image)
+                           ;; preview-icon
+                           "\
+%s redisplays preview
+%s more options")
+   ;; icon on separate line only for stuff starting on its own line
+   (with-current-buffer (overlay-buffer ov)
+     (save-excursion
+       (save-restriction
+         (widen)
+         (goto-char (overlay-start ov))
+         (if (bolp) "\n" ""))))))
 
 
-;;  more generally, we should kill the job if the point moves into a
-;;  math environment in the region?
+(defun czm-preview-override-preview-disable (ovr)
+  "Change overlay behaviour of OVR after source edits.
 
-;;; !!!!
+OVERRIDE DIFFERENCES: commented out two lines.  This has the
+effect of leaving previews visible during edits."
+  (overlay-put ovr 'queued nil)
+  (preview-remove-urgentization ovr)
+  ;; (overlay-put ovr 'preview-image nil)
+  (overlay-put ovr 'timestamp nil)
+  (setcdr (overlay-get ovr 'strings) (preview-disabled-string ovr))
+  ;; (preview-toggle ovr)
+  (overlay-put ovr 'preview-state 'disabled)
+  (dolist (filename (overlay-get ovr 'filenames))
+    (condition-case nil
+        (preview-delete-file filename)
+      (file-error nil))
+    (overlay-put ovr 'filenames nil)))
+
 
 ;;; ------------------------------ HOOKS ------------------------------
 
@@ -1080,7 +1116,10 @@ smallest interval that contains this group."
   (advice-add 'preview-parse-messages :override #'czm-preview-override-parse-messages)
   (advice-add 'preview-kill-buffer-cleanup :override #'czm-preview-override-kill-buffer-cleanup)
   (advice-add 'TeX-region-create :override #'czm-preview-override-TeX-region-create)
-  (advice-add 'TeX-process-check :override #'czm-preview-override-TeX-process-check))
+  (advice-add 'TeX-process-check :override #'czm-preview-override-TeX-process-check)
+  (advice-add 'preview-inactive-string :override #'czm-preview-override-inactive-string)
+  (advice-add 'preview-disable :override #'czm-preview-override-preview-disable)  
+  )
 
 (defun czm-preview--close ()
   "Remove advice and hooks for `czm-preview'."
@@ -1092,7 +1131,10 @@ smallest interval that contains this group."
   (advice-remove 'preview-parse-messages #'czm-preview-override-parse-messages)
   (advice-remove 'preview-kill-buffer-cleanup #'czm-preview-override-kill-buffer-cleanup)
   (advice-remove 'TeX-region-create #'czm-preview-override-TeX-region-create)
-  (advice-remove 'TeX-process-check #'czm-preview-override-TeX-process-check))
+  (advice-remove 'TeX-process-check #'czm-preview-override-TeX-process-check)
+  (advice-remove 'preview-inactive-string #'czm-preview-override-inactive-string)
+  (advice-remove 'preview-disable #'czm-preview-override-preview-disable)
+  )
 
 (defun czm-preview--reset-timer ()
   "Reset the preview timer."
