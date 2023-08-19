@@ -123,10 +123,13 @@ buffer.  For this reason, it is a global object.  This local
 variable keeps track of the buffers in which the timer should do
 anything.")
 
-(defvar-local czm-preview--last-image nil
+(defvar-local czm-preview--disabled-image nil
   "The preview image that was most recently disabled.
 This is used to avoid flickering or construction signs when a new
 preview is generated that replaces an old one.")
+
+(defvar-local czm-preview--disabled-region-begin nil
+  "Beginning of the preview region that was most recently disabled.")
 
 ;;; ------------------------------ OVERRIDES ------------------------------
 
@@ -843,10 +846,11 @@ visible during edits.  The copy does TODO"
                       (file-name-parent-directory
                        (file-name-directory (car filename))))))
           (copy-file src dst t)
-          (setq czm-preview--last-image
+          (setq czm-preview--disabled-image
                 (create-image dst 'png nil :ascent 90))
+          (setq czm-preview--disabled-region-begin (overlay-start ovr))
 
-          ;; (setq czm-preview--last-image (preview-make-image 'test))
+          ;; (setq czm-preview--disabled-image (preview-make-image 'test))
           (preview-delete-file filename)
           )
       (file-error nil))
@@ -874,15 +878,17 @@ for the file extension."
                (vector box nil snippet))
   ;; (overlay-put ov 'preview-image
   ;;              (list (cons 'image (cdr preview-nonready-icon))))
-  (if czm-preview--last-image
+  (if (and
+        czm-preview--disabled-image
+        (= czm-preview--disabled-region-begin (overlay-start ov)))
       (progn 
         (overlay-put ov 'preview-image
-                     (list (cons 'image (cdr czm-preview--last-image))))
-        (setq czm-preview--last-image nil))
+                     (list (cons 'image (cdr czm-preview--disabled-image))))
+        (setq czm-preview--disabled-image nil))
     (overlay-put ov 'preview-image
                  (list (preview-icon-copy preview-nonready-icon))))
-  ;; (when czm-preview--last-image
-  ;;   (overlay-put ov 'preview-image czm-preview--last-image))
+  ;; (when czm-preview--disabled-image
+  ;;   (overlay-put ov 'preview-image czm-preview--disabled-image))
   (preview-add-urgentization #'preview-gs-urgentize ov run-buffer)
   (list ov))
 
