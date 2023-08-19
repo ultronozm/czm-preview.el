@@ -125,6 +125,9 @@ anything.")
 
 ;;; ------------------------------ OVERRIDES ------------------------------
 
+;; These overrides are copy/pasted from tex.el/preview.el and edited
+;; to suit our needs.
+
 (defun czm-preview-override-TeX-process-check (name)
   "Check if a process for the TeX document NAME already exist.
 If so, give the user the choice of aborting the process or the current
