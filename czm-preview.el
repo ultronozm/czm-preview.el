@@ -807,7 +807,7 @@ This is for overlays where the source text has been clicked
 visible.  For efficiency reasons it is expected that the buffer
 is already selected and unnarrowed.
 
-OVERRIDE DIFFERENCE: we take `(overlay-get ov 'preview-image)'
+OVERRIDE DIFFERENCE: we take `(overlay-get ov \='preview-image)'
 rather than `preview-icon'."
   (concat
    (preview-make-clickable (overlay-get ov 'preview-map)
