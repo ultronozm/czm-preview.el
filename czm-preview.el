@@ -100,6 +100,29 @@ czm-preview-mode is activated for the first time."
 (defvar czm-preview--debug nil
   "If non-nil, print debug messages.")
 
+(defvar-local czm-preview--region-time nil)
+
+(defvar-local czm-preview--region-begin nil)
+
+(defvar-local czm-preview--region-end nil)
+
+(defvar-local czm-preview--active-region nil
+  "Stores the region currently being processed by `preview-region'.")
+
+(defvar czm-preview--active-environment-start nil)
+
+(defvar czm-preview--timer nil)
+
+(defvar-local czm-preview--style-hooks-applied nil
+  "Has `TeX-update-style' been run in this buffer?")
+
+(defvar-local czm-preview--timer-enabled nil
+  "Is the preview timer is enabled in this buffer?
+We want the preview timer to be active only in the current
+buffer.  For this reason, it is a global object.  This local
+variable keeps track of the buffers in which the timer should do
+anything.")
+
 ;;; ------------------------------ OVERRIDES ------------------------------
 
 (defun czm-preview-override-TeX-process-check (name)
@@ -281,27 +304,18 @@ into STR as tags."
 	      (insert (format "\\tag{%s}" number))))))
       (buffer-substring-no-properties (point-min) (point-max)))))
 
-(defvar-local czm-preview--region-time nil)
-
-(defvar-local czm-preview--region-begin nil)
-
-(defvar-local czm-preview--region-end nil)
-
-(defvar-local czm-preview--active-region nil
-  "Stores the region currently being processed by `preview-region'.")
-
 (defun czm-preview-override-region (begin end)
   "Run preview on region between BEGIN and END.
 
 OVERRIDE DIFFERENCES:
 
-(1) We add a preprocessing step to add label numbers as tags.
+1. We add a preprocessing step to add label numbers as tags.
 
-(2) When we call `TeX-region-create', the third argument is the
+2. When we call `TeX-region-create', the third argument is the
 name of the buffer (rather than either <none> or the name of the
 file).  This is used for TODO
 
-(3) We store information about the region being processed (BEGIN,
+3. We store information about the region being processed (BEGIN,
 END and the current time) in buffer-local variables.  TODO: why?"
   (interactive "r")
   (when czm-preview--debug
@@ -353,10 +367,10 @@ stuff for the placement hook.
 OVERRIDE DIFFERENCES: see the comments labelled OVERRIDE
 DIFFERENCE in the body of the function for details.  In short:
 
-(1) We add support for indirect buffers and org-mode source
+1. We add support for indirect buffers and org-mode source
 blocks.  This requires our modifications to `preview-region'.
 
-(2) We fix a subtle bug that shows up when `preview-region' is
+2. We fix a subtle bug that shows up when `preview-region' is
 called in slightly unusual circumstances.  For details, see
 https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html."
   (with-temp-message nil
@@ -783,22 +797,6 @@ its argument."
 
 ;;; !!!!
 
-
-(defvar czm-preview--active-environment-start nil)
-
-(defvar czm-preview--timer nil)
-
-(defvar-local czm-preview--style-hooks-applied nil
-  "Has `TeX-update-style' been run in this buffer?")
-
-(defvar-local czm-preview--timer-enabled nil
-  "Is the preview timer is enabled in this buffer?
-We want the preview timer to be active only in the current
-buffer.  For this reason, it is a global object.  This local
-variable keeps track of the buffers in which the timer should do
-anything.")
-
-
 ;;; ------------------------------ HOOKS ------------------------------
 
 (defun czm-preview--after-change-function (beg end _length)
@@ -1013,7 +1011,7 @@ smallest interval that contains this group."
 	((margin-search-paragraphs 3)
 	 (above-window-beg
 	  (save-excursion
-            (let ((threshold (max (window-beg)
+            (let ((threshold (max (window-start)
                                   (- (point) czm-preview-max-region-radius))))
 	      (goto-char threshold)
               (backward-paragraph margin-search-paragraphs)
