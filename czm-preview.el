@@ -62,7 +62,7 @@
   :group 'czm
   :prefix "czm-preview-")
 
-(defcustom czm-preview-valid-env
+(defcustom czm-preview-valid-environments
   '("equation" "equation*" "align" "align*" "tabular" "tabular*" "multline" "multline*")
   "Valid LaTeX environments for active preview."
   :type '(repeat string)
@@ -75,6 +75,18 @@
 
 (defcustom czm-preview-max-region-radius 5000
   "Maximum radius of region to be previewed."
+  :type 'number
+  :group 'czm-preview)
+
+(defcustom czm-preview-latex-prefix-directory ""
+  "Prefix directory for LaTeX binaries."
+  :type 'string
+  :group 'czm-preview)
+
+(defcustom czm-preview-timer-interval 0.1
+  "Interval for preview timer.
+For this to have any effect, it must be set before
+czm-preview-mode is activated for the first time."
   :type 'number
   :group 'czm-preview)
 
@@ -108,27 +120,39 @@ This should be once, after `preview' has been loaded."
 
 (defvar czm-preview--active-env-start nil)
 
-(defvar-local czm-preview--active-region nil
-  "Stores the region currently being processed by `preview-region'.")
+
 
 (defvar czm-preview--debug nil)
 
 (defvar czm-preview--timer nil)
 
 (defvar-local czm-preview--preview-region-already-run nil
-  "Set to t after preview-region has been run for the first time.")
+  "Has `preview-region' been run in this buffer?
+This is used to check
+")
 
 (defvar-local czm-preview--style-hooks-applied nil
+  "Has `TeX-update-style' been run in this buffer?
+
+")
+
+(defvar-local czm-preview--timer-enabled nil
+  "Is the preview timer is enabled in this buffer?
+We want the preview timer to be active only in the current
+buffer.  For this reason, it is a global object.  This local
+variable keeps track of the buffers in which the timer should do
+anything.")
+
+(defvar-local czm-preview--active-region nil
   "Stores the region currently being processed by `preview-region'.")
 
-
-(defvar-local czm-preview--timer-enabled nil)
 (defvar-local preview-region--last-time nil)
-(defcustom czm-preview-latex-prefix-directory "")
 
 (defvar-local preview-region--begin nil)
 
 (defvar-local preview-region--end nil)
+
+
 
 
 
@@ -194,7 +218,7 @@ where it can be seen."
 Return nil if not currently in such an environment."
   (and
    (texmathp)
-   (member (car texmathp-why) czm-preview-valid-env)
+   (member (car texmathp-why) czm-preview-valid-environments)
    (cdr texmathp-why)
    ;; (save-excursion
    ;;   (re-search-backward czm-preview-env-start-regexp nil nil 1)
@@ -547,7 +571,7 @@ POS defaults to (point)."
     (cancel-timer czm-preview--timer)
     (setq czm-preview--timer nil))
   (setq czm-preview--timer
-        (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
+        (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
@@ -573,12 +597,7 @@ POS defaults to (point)."
 	 (unless (czm-preview-processes)
 	   (czm-preview-current-environment))))))
 
-(defcustom czm-preview--timer-interval 0.1
-  "Interval for preview timer.
-For this to have any effect, it must be set before
-czm-preview-mode is activated for the first time."
-  :type 'number
-  :group 'czm-preview)
+(defun czm-preview--init ()
 
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
@@ -608,7 +627,7 @@ czm-preview-mode is activated for the first time."
 ;;   (interactive)
 ;;   (unless czm-preview--timer
 ;;     (setq czm-preview--timer
-;; 	  (run-with-timer 0.1 0.1 #'czm-preview--timer-function)))
+;; 	  (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
 ;;   (setq czm-preview--timer-enabled (not czm-preview--timer-enabled))
 ;;   (if czm-preview--timer-enabled
 ;;       (progn
@@ -630,7 +649,7 @@ czm-preview-mode is activated for the first time."
 ;; (defun czm-preview-activate-timer ()
 ;;   (interactive)
 ;;   (setq czm-preview--timer
-;; 	(run-with-idle-timer 0.1 t #'czm-preview--first-visible-stale-region-if-latex-mode))
+;; 	(run-with-idle-timer czm-preview-timer-interval t #'czm-preview--first-visible-stale-region-if-latex-mode))
 ;;   )
 
 ;; (defun mg-LaTeX-preview-formulae ()
