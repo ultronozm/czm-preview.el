@@ -1052,6 +1052,19 @@ POS defaults to (point)."
       (push (cons start-index end-index) intervals))
     (nreverse intervals)))
 
+;; this is either a string (regexp), or a list of strings (to be
+;; passed to regexp-opt), or a function (a predicate that accepts a
+;; string and returns t if it matches)
+(defcustom czm-preview-regions-not-to-preview nil
+  "Describes which regions not to be previewed automatically.
+This is either a string (regexp), or a list of strings (to be
+passed to `regexp-opt'), or a function (a predicate that accepts
+a string and returns t if it matches)."
+  :type '(choice (string :tag "Regexp")
+                 (repeat :tag "List of strings" string)
+                 (function :tag "Predicate"))
+  :group 'czm-preview)
+
 (defun czm-preview--first-stale-chunk (beg end)
   "Get convex hull of initial stale envs between BEG and END.
 Return cons cell of beginning and ending positions."
@@ -1069,8 +1082,18 @@ Return cons cell of beginning and ending positions."
 	    (cl-mapcar (lambda (interval region)
 		         (and
 			  (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
-			  (not (string-match-p (regexp-opt '("<++>" "<+++>"))
-					       region))))
+                          (not
+                           (cond
+                            ((stringp czm-preview-regions-not-to-preview)
+                             (string-match-p czm-preview-regions-not-to-preview region))
+                            ((listp czm-preview-regions-not-to-preview)
+                             (string-match-p (regexp-opt czm-preview-regions-not-to-preview) region))
+                            ((functionp czm-preview-regions-not-to-preview)
+                             (funcall czm-preview-regions-not-to-preview region))
+                            (t t)))
+                          ;; (not (string-match-p (regexp-opt '("<++>" "<+++>"))
+			  ;; 	             region))
+			  ))
 		       top-level-math-intervals regions))
 	   (_line-numbers         ; only for stuff occuring on one line
 	    (mapcar (lambda (interval)
