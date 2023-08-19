@@ -116,10 +116,9 @@ czm-preview-mode is activated for the first time."
 
 (defvar czm-preview--timer nil)
 
-(defvar-local czm-preview--preview-region-already-run nil
-  "Has `preview-region' been run in this buffer?
-This is used to check
-")
+;; (defvar-local czm-preview--preview-region-already-run nil
+;;   "Has `preview-region' been run in this buffer?
+;; This is used to check whether we should run =preview-cache-preamble=.")
 
 (defvar-local czm-preview--style-hooks-applied nil
   "Has `TeX-update-style' been run in this buffer?
@@ -398,6 +397,8 @@ ending positions."
   `preview-region' on the smallest interval that contains this
   group."
   (interactive)
+  (when czm-preview--debug
+    (message "czm-preview--first-visible-stale-region"))
   (unless (czm-preview-processes)
     (let*
 	((margin-search-paragraphs 3)
@@ -406,17 +407,23 @@ ending positions."
             (let ((threshold (max (window-start)
                                   (- (point) czm-preview-max-region-radius))))
 	      (goto-char threshold)
-	      (if (re-search-backward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
-		  (match-beginning 0)
-	        threshold))))
+              (backward-paragraph margin-search-paragraphs)
+              (point)
+	      ;; (if (re-search-backward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
+	      ;;     (match-beginning 0)
+	      ;;   threshold)
+              )))
 	 (below-window-end
 	  (save-excursion
             (let ((threshold (min (window-end)
                                   (+ (point) czm-preview-max-region-radius))))
 	      (goto-char threshold)
-	      (if (re-search-forward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
-		  (match-beginning 0)
-	        threshold))))
+              (forward-paragraph margin-search-paragraphs)
+              (point)
+	      ;; (if (re-search-forward "[\n\r][ \t]*[\n\r]" nil t margin-search-paragraphs)
+	      ;;     (match-beginning 0)
+	      ;;   threshold)
+              )))
 	 (action
 	  (lambda (interval)
 	    (let ((inhibit-message t)
@@ -433,24 +440,32 @@ ending positions."
       ;; arguments.  You're not really sure what's up with that.  For
       ;; now you'll just "plug the hole" by having
       ;; czm-preview-find-first-stale-math-region do nothing in such cases.
-      (if (and nil (not (texmathp)))
-          (progn
-            (when czm-preview--debug
-              (message "above-window-start: %s, below-window-end: %s" above-window-start below-window-end))
-	    (when-let ((interval (czm-preview-find-first-stale-math-region above-window-start
-							                   below-window-end)))
-	      (funcall action interval)))
-	(if-let ((interval (czm-preview-find-first-stale-math-region above-window-start
-							             (point))))
-            (progn
-              (when czm-preview--debug
-                (message "above-window-start: %s, point: %s" above-window-start (point)))
-	      (funcall action interval))
-	  (when-let ((interval (czm-preview-find-first-stale-math-region (point) below-window-end)))
-            (progn
-              (when czm-preview--debug
-                (message "point: %s, below-window-end: %s" (point) below-window-end))
-	      (funcall action interval))))))))
+      (let (interval)
+        (cond
+         ((setq interval (czm-preview-find-first-stale-math-region
+                          above-window-start
+			  (point)))
+          (when czm-preview--debug
+            (message "above-window-start: %s, point: %s" above-window-start (point)))
+	  (funcall action interval))
+         ((setq interval (czm-preview-find-first-stale-math-region
+                          (point)
+                          below-window-end))
+          (when czm-preview--debug
+            (message "point: %s, below-window-end: %s" (point) below-window-end))
+	  (funcall action interval))))
+      ;; (if-let ((interval (czm-preview-find-first-stale-math-region above-window-start
+      ;;   						           (point))))
+      ;;     (progn
+      ;;       (when czm-preview--debug
+      ;;         (message "above-window-start: %s, point: %s" above-window-start (point)))
+      ;;       (funcall action interval))
+      ;;   (when-let ((interval (czm-preview-find-first-stale-math-region (point) below-window-end)))
+      ;;     (progn
+      ;;       (when czm-preview--debug
+      ;;         (message "point: %s, below-window-end: %s" (point) below-window-end))
+      ;;       (funcall action interval))))
+      )))
 
 (defun czm-preview--find-top-level-math-intervals (start end)
   "Find top-level LaTeX math environments between START and END.
@@ -577,15 +592,26 @@ POS defaults to (point)."
    ;; (not (buffer-base-buffer)) ; preview doesn't work in indirect buffers
    (eq major-mode 'latex-mode)
    (cond
-    ((not czm-preview--preview-region-already-run)
-     (let ((inhibit-message t))
-       (save-excursion
-	 (preview-cache-preamble)))
-     (setq-local czm-preview--preview-region-already-run t))
+    ;; ((not czm-preview--preview-region-already-run)
+    ;;  (let ((inhibit-message t))
+    ;;    (save-excursion
+    ;;      (preview-cache-preamble)))
+    ;;  (setq-local czm-preview--preview-region-already-run t))
     ((czm-preview--first-visible-stale-region))
     (nil (texmathp)
 	 (unless (czm-preview-processes)
 	   (czm-preview-current-environment))))))
+
+(defun czm-preview--override-TeX-process-check (name)
+  "Check if a process for the TeX document NAME already exist.
+If so, give the user the choice of aborting the process or the current
+command."
+  (let (process)
+    (while (and (setq process (TeX-process name))
+                (eq (process-status process) 'run))
+      (cond
+       ((eq (process-status process) 'run)
+           (error "Cannot have two processes for the same document"))))))
 
 (defun czm-preview--init ()
   "Initialize advice and hooks for `czm-preview'."
@@ -596,7 +622,8 @@ POS defaults to (point)."
   (advice-add 'preview-place-preview :around #'czm-preview--place-preview-advice)
   (advice-add 'preview-parse-messages :override #'czm-preview--override-parse-messages)
   (advice-add 'preview-kill-buffer-cleanup :override #'czm-preview--override-kill-buffer-cleanup)
-  (advice-add 'TeX-region-create :override #'czm-preview--TeX-region-create))
+  (advice-add 'TeX-region-create :override #'czm-preview--TeX-region-create)
+  (advice-add 'TeX-process-check :override #'czm-preview--override-TeX-process-check))
 
 (defun czm-preview--close ()
   "Remove advice and hooks for `czm-preview'."
@@ -607,7 +634,8 @@ POS defaults to (point)."
   (advice-remove 'preview-place-preview #'czm-preview--place-preview-advice)
   (advice-remove 'preview-parse-messages #'czm-preview--override-parse-messages)
   (advice-remove 'preview-kill-buffer-cleanup #'czm-preview--override-kill-buffer-cleanup)
-  (advice-remove 'TeX-region-create #'czm-preview--TeX-region-create))
+  (advice-remove 'TeX-region-create #'czm-preview--TeX-region-create)
+  (advice-remove 'TeX-process-check #'czm-preview--override-TeX-process-check))
 
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
@@ -768,7 +796,7 @@ Display message in the minibuffer indicating old and new value."
   (setq-local preview-region--begin begin)
   (setq-local preview-region--end end)
   (setq-local preview-region--last-time (float-time))
-  (setq-local czm-preview--preview-region-already-run t)
+  ;; (setq-local czm-preview--preview-region-already-run t)
   (setq czm-preview--active-region (cons begin end))
   (with-current-buffer (get-buffer-create "*Debug Preview*")
     (goto-char (point-max))
