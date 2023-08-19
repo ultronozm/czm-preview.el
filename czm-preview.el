@@ -820,8 +820,9 @@ rather than `preview-icon'."
 (defun czm-preview-override-preview-disable (ovr)
   "Change overlay behaviour of OVR after source edits.
 
-OVERRIDE DIFFERENCES: commented out two lines.  This has the
-effect of leaving previews visible during edits."
+OVERRIDE DIFFERENCES: commented out two lines, and added a
+\"copy\".  The commenting has the effect of leaving previews
+visible during edits.  The copy does TODO"
   (overlay-put ovr 'queued nil)
   (preview-remove-urgentization ovr)
   ;; (overlay-put ovr 'preview-image nil)
