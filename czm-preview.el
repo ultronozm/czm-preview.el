@@ -58,7 +58,6 @@
 (require 'latex)
 (require 'preview)
 (require 'czm-tex-util)
-(require 'czm-preview-override)
 
 ;;; ------------------------------ CUSTOMIZATIONS ------------------------------
 
