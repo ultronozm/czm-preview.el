@@ -966,6 +966,25 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
+(defun find-end-of-block (why bound)
+  (catch 'found
+    (let ((end-regexp
+           (cond
+             ((string= why "$") "\\$")
+             ((string= why "$$") "\\$\\$")
+             ((string= why "\\[") "\\\\\\]")
+             ((string= why "\\(") "\\\\)")
+             ((member why texmathp-environments)
+              (concat "\\\\end{" (regexp-quote why) "}")))))
+      (while (re-search-forward end-regexp bound t)
+        (when (and (not (TeX-in-comment))
+                   ;; (not (LaTeX-verbatim-p))
+                   )
+          (let ((inner-end (match-beginning 0))
+                (end (point)))
+            (throw 'found
+              (cons inner-end end))))))))
+
 ;;;###autoload
 (defun find-next-math-block (&optional bound)
   (interactive)
@@ -982,32 +1001,21 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
             (env-name (match-string 2))
             (match (match-string 0)))
         (when (and (not (TeX-in-comment))
-                   (not (LaTeX-verbatim-p)))
-          (let ((block-bound (save-excursion
-                               (if (re-search-forward
-                                    "[\n\r][ \t]*[\n\r]"
-                                    bound t)
-                                   (match-beginning 0)
-                                 bound))))
-            (when-let*
-                ((why (or env-name match))
-                 (end-regexp
-                  (cond
-                    ((string= why "$") "\\$")
-                    ((string= why "$$") "\\$\\$")
-                    ((string= why "\\[") "\\\\\\]")
-                    ((string= why "\\(") "\\\\)")
-                    ((member why texmathp-environments)
-                     (concat "\\\\end{" (regexp-quote env-name) "}"))))
-                 (notfound t))
-              (while (re-search-forward end-regexp block-bound t)
-                (when (and (not (TeX-in-comment))
-                           ;; (not (LaTeX-verbatim-p))
-                           )
-                  (let ((inner-end (match-beginning 0))
-                        (end (point)))
-                    (throw 'found
-                      (list begin inner-begin inner-end end))))))))))))
+                   (not (LaTeX-verbatim-p))
+                   (or (null env-name)
+                       (member env-name texmathp-environments)))
+          (when-let* ((why (or env-name match))
+                      (block-bound (save-excursion
+                                     (if (re-search-forward
+                                          "[\n\r][ \t]*[\n\r]"
+                                          bound t)
+                                         (match-beginning 0)
+                                       bound)))
+                      (end-cons (find-end-of-block why block-bound))
+                      (inner-end (car end-cons))
+                      (end (cdr end-cons)))
+            (throw 'found
+                      (list begin inner-begin inner-end end))))))))
 
 (defun find-next-math-block-show-contents (&optional bound)
   (interactive)
