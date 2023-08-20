@@ -115,6 +115,7 @@ czm-preview-mode is activated for the first time."
 
 (defvar-local czm-preview--style-hooks-applied nil
   "Has `TeX-update-style' been run in this buffer?")
+;; Could consider instead trying to use `font-lock-ensure'?
 
 (defvar-local czm-preview--timer-enabled nil
   "Is the preview timer is enabled in this buffer?
