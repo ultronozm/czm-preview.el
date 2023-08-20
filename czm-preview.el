@@ -88,7 +88,7 @@ TODO: document this better."
   :type 'string
   :group 'czm-preview)
 
-(defcustom czm-preview-timer-interval 0.25
+(defcustom czm-preview-timer-interval 1.0
   "Interval for preview timer.
 For this to have any effect, it must be set before
 czm-preview-mode is activated for the first time."
