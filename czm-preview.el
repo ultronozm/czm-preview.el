@@ -1026,6 +1026,15 @@ Return list of cons cells containing beg and end positions."
 		  (setq contents
 			(buffer-substring-no-properties
 			 (+ 2 interval-beg)
+			 (- (point) 2)))))
+	       ;; \(...\)
+               ((string= env-text "\\(")
+		(setq interval-end
+		      (re-search-forward "\\\\)" end t))
+		(when interval-end
+		  (setq contents
+			(buffer-substring-no-properties
+			 (+ 2 interval-beg)
 			 (- (point) 2))))))
 	      (and interval-beg interval-end
 		   (string-match-p "[^[:space:]\n\r]" contents) ; check that contents are non-empty
