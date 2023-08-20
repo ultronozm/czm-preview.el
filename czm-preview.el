@@ -925,19 +925,22 @@ If a region is currently being previewed, and it's not a
 \"current environment\" preview, and we execute any command
 whatsoever with point inside that region, then kill the preview."
   (setq-local czm-preview--keepalive t)
-  (and (eq major-mode 'latex-mode)
-       ;; a region is currently being previewed
-       czm-preview--active-region
-       ;; it's not a "current environment" preview.  kinda hacky.
-       ;; maybe eliminate this, if you end up eliminating that?  I
-       ;; mean, why not just always position the preview at the start
-       ;; of the environment?
-       (not (eq czm-preview--active-environment-start
-		(car czm-preview--active-region)))
-       (texmathp)
-       (<= (car czm-preview--active-region) (point))
-       (< (point) (cdr czm-preview--active-region))
-       (ignore-errors (TeX-kill-job))))
+  (and
+   nil
+   (eq major-mode 'latex-mode)
+   ;; a region is currently being previewed
+   czm-preview--active-region
+   ;; it's not a "current environment" preview.  kinda hacky.
+   ;; maybe eliminate this, if you end up eliminating that?  I
+   ;; mean, why not just always position the preview at the start
+   ;; of the environment?
+   (not (eq czm-preview--active-environment-start
+	    (car czm-preview--active-region)))
+   (texmathp)
+   (<= (car czm-preview--active-region) (point))
+   (< (point) (cdr czm-preview--active-region))
+   (ignore-errors (TeX-kill-job))))
+
 
 
 (defun czm-preview--flag-style-hooks-applied ()
