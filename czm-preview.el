@@ -30,12 +30,12 @@
 ;;
 ;; - Previews remain visible during edits.
 ;;
+;; - Equation numbers are extracted from the .aux file, when possible.
+;;
 ;; - Previews work in indirect and non-file buffers (e.g., indirect
 ;; org mode source blocks) -- for this feature to work, you must
 ;; customize the variable `czm-preview-TeX-master' to point to a valid
-;; TeX file that contains a suitable preamble.
-;;
-;; - Equation numbers are extracted from the .aux file, when possible.
+;; TeX file with a suitable preamble.
 ;;
 ;; To use this package, first install AUCTeX, then
 ;;
@@ -48,12 +48,16 @@
 ;;
 ;; in your init file.
 ;;
-;; One issue: if `czm-preview-TeX-master' is non-nil and
+;; ISSUE: if `czm-preview-TeX-master' is non-nil and
 ;; `czm-preview-mode' is activated, then ordinary LaTeX compilation
-;; via C-c C-c probably won't work correctly.  One workaround is to
-;; disable `czm-preview-mode' when compiling.  Another approach (what
-;; I do) is to avoid C-c C-c altogether and just have a latexmk
-;; process running in the background for each open TeX file.
+;; via \\[TeX-command-master] probably won't work correctly.  One
+;; workaround is to disable `czm-preview-mode' when compiling.
+;; Another approach (what I do) is to avoid \\[TeX-command-master]
+;; altogether and just have a latexmk process running in the
+;; background for each open TeX file.
+;;
+;; TIP: dvi files generate faster than pdf, so for a snappier preview,
+;; use (TeX-PDF-mode 0).
 ;;
 ;; CAUTION: the implementation applies ADVICE to tex.el/preview.el,
 ;; and so might be incompatible with future versions of the latter.
