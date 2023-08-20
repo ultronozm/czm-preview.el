@@ -962,13 +962,113 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
+;;;###autoload
+(defun find-next-math-block (&optional bound)
+  (interactive)
+  (unless bound (setq bound (point-max)))
+  (catch 'found
+    (while (re-search-forward
+            (concat "\\(" "\\\\begin{\\([^{}]*\\)}"
+                    "\\|" "\\$\\$?"
+                    "\\|" "\\\\\\["
+                    "\\|" "\\\\(" "\\)")
+            bound t)
+      (let ((begin (match-beginning 0))
+            (inner-begin (match-end 0))
+            (env-name (match-string 2)))
+        (when (and (not (TeX-in-comment))
+                   (texmathp))
+          (setq bound
+                (save-excursion
+                  (if (re-search-forward
+                       "[\n\r][ \t]*[\n\r]"
+                       bound t)
+                      (match-beginning 0)
+                    bound)))
+          (when-let*
+              ((why (car texmathp-why))
+               (end-regexp
+                (cond
+                 ((member why '("$" "$$")) texmathp-toggle-regexp)
+                 ((string= why "\\[") "\\\\\\]")
+                 ((string= why "\\(") "\\\\)")
+                 ((member why texmathp-environments)
+                  (concat "\\\\end{" (regexp-quote env-name) "}"))))
+               (notfound t))
+            (while (re-search-forward end-regexp bound t)
+              (when (not (TeX-in-comment))
+                (let ((inner-end (match-beginning 0))
+                      (end (point)))
+                  (throw 'found
+                         (list begin inner-begin inner-end end)))))))))))
+
+;;;###autoload
+(defun find-next-math-block (&optional bound)
+  (interactive)
+  (unless bound (setq bound (point-max)))
+  (catch 'found
+    (while (re-search-forward
+            (concat "\\(" "\\\\begin{\\([^{}]*\\)}"
+                    "\\|" "\\$\\$?"
+                    "\\|" "\\\\\\["
+                    "\\|" "\\\\(" "\\)")
+            bound t)
+      (let ((begin (match-beginning 0))
+            (inner-begin (match-end 0))
+            (env-name (match-string 2))
+            (match (match-string 0)))
+        (when (and (not (TeX-in-comment))
+                   (not (LaTeX-verbatim-p)))
+          (let ((block-bound (save-excursion
+                               (if (re-search-forward
+                                    "[\n\r][ \t]*[\n\r]"
+                                    bound t)
+                                   (match-beginning 0)
+                                 bound))))
+            (when-let*
+                ((why (or env-name match))
+                 (end-regexp
+                  (cond
+                   ((member why '("$" "$$")) texmathp-toggle-regexp)
+                   ((string= why "\\[") "\\\\\\]")
+                   ((string= why "\\(") "\\\\)")
+                   ((member why texmathp-environments)
+                    (concat "\\\\end{" (regexp-quote env-name) "}"))))
+                 (notfound t))
+              (while (re-search-forward end-regexp block-bound t)
+                (when (and (not (TeX-in-comment))
+                           ;; (not (LaTeX-verbatim-p))
+                           )
+                  (let ((inner-end (match-beginning 0))
+                        (end (point)))
+                    (throw 'found
+                           (list begin inner-begin inner-end end))))))))))))
+
 (defun czm-preview--find-top-level-math-intervals (beg end)
   "Find top-level LaTeX math envs between BEG and END.
 Return list of cons cells containing beg and end positions."
   (save-excursion
     (let ((math-intervals '()))
       (goto-char beg)
-      (while (re-search-forward "\\(\\\\begin{\\([^{}]*\\)}\\|\\$\\|\\\\\\[\\)" end t)
+      (while-let
+          ((block (find-next-math-block end)))
+        (cl-destructuring-bind (begin inner-begin inner-end end) block
+          ;; check that contents are non-empty
+          (when (string-match-p "[^[:space:]\n\r]"
+                                (buffer-substring-no-properties
+				 inner-begin inner-end))
+	    (push (cons begin end) math-intervals))))
+      (nreverse math-intervals))))
+
+(defun czm-preview--find-top-level-math-intervals-0 (beg end)
+  "Find top-level LaTeX math envs between BEG and END.
+Return list of cons cells containing beg and end positions."
+  (save-excursion
+    (let ((math-intervals '()))
+      (goto-char beg)
+      (while (re-search-forward
+              "\\(\\\\begin{\\([^{}]*\\)}\\|\\$\\|\\\\\\[\\|\\\\(\\)"
+              end t)
 	(let ((env-text (match-string 0))
 	      (env-name (match-string 2))
 	      (env-after-begin (match-end 1))
@@ -1347,6 +1447,7 @@ where it can be seen."
 	))))
 
 
+;; profiling: (let ((time (current-time))) (czm-preview--preview-some-chunk) (let ((time2 (current-time))) (message "time: %s msec" (* 1000 (float-time (time-subtract time2 time))))))
 
 ;;; ------------------------------ THE END ------------------------------
 
