@@ -1170,36 +1170,38 @@ smallest interval that contains this group."
       (let (interval)
         (setq-local czm-preview--keepalive t)
         (cond
-          ((setq interval (czm-preview--first-stale-chunk
-                           above-window-beg
-			   (point)))
-           (when czm-preview--debug
-             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
-	   (funcall action interval))
-          ((setq interval (czm-preview--first-stale-chunk
-                           (point)
-                           below-window-end))
-           (when czm-preview--debug
-             (message "point: %s, below-window-end: %s" (point) below-window-end))
-	   (funcall action interval))
-          ((and
-            (texmathp)
-            (let ((why (car texmathp-why))
-                  (beg (cdr texmathp-why)))
-              (unless (czm-preview--active-or-inactive-preview-at-point-p
-                       beg)
-                (when-let* ((bound (save-excursion
-                                     (if (re-search-forward
-                                          "[\n\r][ \t]*[\n\r]"
-                                          (point-max) t)
-                                         (match-beginning 0)
-                                       (point-max))))
-                            (end (cdr (save-excursion
-                                        (find-end-of-block why bound)))))
-                  (test-do-it beg end))))))
-          (t
-           (setq-local czm-preview--keepalive nil)
-           ))))))
+         ((setq interval (czm-preview--first-stale-chunk
+                          above-window-beg
+			  (point)))
+          (when czm-preview--debug
+            (message "above-window-beg: %s, point: %s" above-window-beg (point)))
+	  (funcall action interval))
+         ((setq interval (czm-preview--first-stale-chunk
+                          (point)
+                          below-window-end))
+          (when czm-preview--debug
+            (message "point: %s, below-window-end: %s" (point) below-window-end))
+	  (funcall action interval))
+         ((and
+           (texmathp)
+           (let ((why (car texmathp-why))
+                 (beg (cdr texmathp-why)))
+             (unless (czm-preview--active-or-inactive-preview-at-point-p
+                      beg)
+               (when-let* ((bound (save-excursion
+                                    (if (re-search-forward
+                                         "[\n\r][ \t]*[\n\r]"
+                                         (point-max) t)
+                                        (match-beginning 0)
+                                      (point-max))))
+                           (end (cdr (save-excursion
+                                       (find-end-of-block why bound)))))
+                 (unless (and (string= why "$")
+                              (string-match "[\n\r]"
+                                            (buffer-substring-no-properties beg end)))
+                   (test-do-it beg end)))))))
+         (t
+          (setq-local czm-preview--keepalive nil)))))))
 
 (defun test-do-it (beg end)
   (preview-region beg end))
