@@ -967,46 +967,6 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
 ;;;###autoload
-(defun find-next-math-block-0 (&optional bound)
-  (interactive)
-  (unless bound (setq bound (point-max)))
-  (catch 'found
-    (while (re-search-forward
-            (concat "\\(" "\\\\begin{\\([^{}]*\\)}"
-                    "\\|" "\\$\\$?"
-                    "\\|" "\\\\\\["
-                    "\\|" "\\\\(" "\\)")
-            bound t)
-      (let ((begin (match-beginning 0))
-            (inner-begin (match-end 0))
-            (env-name (match-string 2)))
-        (when (and (not (TeX-in-comment))
-                   (texmathp))
-          (setq bound
-                (save-excursion
-                  (if (re-search-forward
-                       "[\n\r][ \t]*[\n\r]"
-                       bound t)
-                      (match-beginning 0)
-                    bound)))
-          (when-let*
-              ((why (car texmathp-why))
-               (end-regexp
-                (cond
-                 ((member why '("$" "$$")) texmathp-toggle-regexp)
-                 ((string= why "\\[") "\\\\\\]")
-                 ((string= why "\\(") "\\\\)")
-                 ((member why texmathp-environments)
-                  (concat "\\\\end{" (regexp-quote env-name) "}"))))
-               (notfound t))
-            (while (re-search-forward end-regexp bound t)
-              (when (not (TeX-in-comment))
-                (let ((inner-end (match-beginning 0))
-                      (end (point)))
-                  (throw 'found
-                         (list begin inner-begin inner-end end)))))))))))
-
-;;;###autoload
 (defun find-next-math-block (&optional bound)
   (interactive)
   (unless bound (setq bound (point-max)))
@@ -1069,87 +1029,6 @@ Return list of cons cells containing beg and end positions."
                                 (buffer-substring-no-properties
 				 inner-begin inner-end))
 	    (push (cons begin end) math-intervals))))
-      (nreverse math-intervals))))
-
-(defun czm-preview--find-top-level-math-intervals-0 (beg end)
-  "Find top-level LaTeX math envs between BEG and END.
-Return list of cons cells containing beg and end positions."
-  (save-excursion
-    (let ((math-intervals '()))
-      (goto-char beg)
-      (while (re-search-forward
-              "\\(\\\\begin{\\([^{}]*\\)}\\|\\$\\|\\\\\\[\\|\\\\(\\)"
-              end t)
-	(let ((env-text (match-string 0))
-	      (env-name (match-string 2))
-	      (env-after-begin (match-end 1))
-	      (interval-beg (match-beginning 0)))
-	  (when
-	      (and
-	       (or
-		;; found mathy environment
-		(member env-name texmathp-environments)
-		;; found $...$ or \[...\]
-		(and (null env-name) (texmathp)))
-	       ;; not in comments
-	       (save-excursion
-		 (let ((p (point)))
-		   (beginning-of-line)
-		   (not (search-forward "%" p t)))))
-	    (let*
-		(contents interval-end)
-	      ;; environment
-	      (cond
-	       (env-name
-		(progn (goto-char env-after-begin)
-		       (setq interval-end
-			     (re-search-forward
-			      (concat "\\\\end{" (regexp-quote env-name) "}")
-			      end t))
-		       (let* ((contents-beg
-			       (save-excursion
-				 (goto-char interval-beg)
-				 (end-of-line)
-				 (point)))
-			      (contents-end
-			       (save-excursion
-				 (beginning-of-line)
-				 (point))))
-			 (setq contents
-			       (buffer-substring-no-properties
-				contents-beg
-				contents-end)))))
-	       ;; $...$
-	       ((string= env-text "$")
-		(let ((line-end
-		       (min end (save-excursion
-				  (end-of-line)
-				  (point)))))
-		  (setq interval-end
-			(re-search-forward "\\$" line-end t))
-		  (setq contents
-			(buffer-substring-no-properties (1+ interval-beg) (1- (point))))))
-	       ;; \[...\]
-	       ((string= env-text "\\[")
-		(setq interval-end
-		      (re-search-forward "\\\\\\]" end t))
-		(when interval-end
-		  (setq contents
-			(buffer-substring-no-properties
-			 (+ 2 interval-beg)
-			 (- (point) 2)))))
-	       ;; \(...\)
-               ((string= env-text "\\(")
-		(setq interval-end
-		      (re-search-forward "\\\\)" end t))
-		(when interval-end
-		  (setq contents
-			(buffer-substring-no-properties
-			 (+ 2 interval-beg)
-			 (- (point) 2))))))
-	      (and interval-beg interval-end
-		   (string-match-p "[^[:space:]\n\r]" contents) ; check that contents are non-empty
-		   (push (cons interval-beg interval-end) math-intervals))))))
       (nreverse math-intervals))))
 
 (defun czm-preview--active-or-inactive-preview-at-point-p (&optional pos)
