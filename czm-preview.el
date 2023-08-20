@@ -1176,10 +1176,17 @@ smallest interval that contains this group."
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point) below-window-end))
 	  (funcall action interval))
+         ((and
+           (texmathp)
+           (not (czm-preview--active-or-inactive-preview-at-point-p
+                 (cdr texmathp-why)))
+           (test-do-it)))
          (t
           (setq-local czm-preview--keepalive nil)
-          )
-         )))))
+          ))))))
+
+(defun test-do-it ()
+  (preview-environment))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
