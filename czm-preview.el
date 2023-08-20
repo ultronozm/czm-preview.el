@@ -850,7 +850,11 @@ visible during edits.  The copy does TODO"
                        (file-name-directory (car filename))))))
           (copy-file src dst t)
           (setq czm-preview--disabled-image
-                (create-image dst 'png nil :ascent 90))
+                (create-image dst 'png nil
+                              :ascent
+                              (plist-get
+                               (cdar (overlay-get ovr 'preview-image))
+                               ':ascent)))
           (setq czm-preview--disabled-region-begin (overlay-start ovr))
 
           ;; (setq czm-preview--disabled-image (preview-make-image 'test))
