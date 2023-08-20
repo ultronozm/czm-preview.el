@@ -24,20 +24,39 @@
 ;;; Commentary:
 
 ;; This package supplies a minor mode `czm-preview-mode' that augments
-;; `preview.el' in the following ways:
+;; `preview.el' from AUCTeX in the following ways:
 ;;
-;; - Automatic previewing of in the visible portion of the buffer.
+;; - Automatic previewing of the visible part of the buffer.
 ;;
-;; - Previews are visible while editing math environments.
+;; - Previews remain visible during edits.
 ;;
 ;; - Previews work in indirect and non-file buffers (e.g., indirect
-;; org mode source blocks) -- for this you need to specify a file
-;; "preview-master.tex" containing a suitable preamble.
+;; org mode source blocks) -- for this feature to work, you must
+;; customize the variable `czm-preview-TeX-master' to point to a valid
+;; TeX file that contains a suitable preamble.
 ;;
 ;; - Equation numbers are extracted from the .aux file, when possible.
 ;;
-;; We caution that the minor mode relies heavily upon advice applied
-;; to tex.el/preview.el.
+;; To use this package, first install AUCTeX, then
+;;
+;;   M-x czm-preview-mode
+;;
+;; in a LaTeX-mode buffer visiting a file.  For indirect and non-file
+;; buffers, first customize as described above, e.g., by including
+;; 
+;;   (setq czm-preview-TeX-master "path/to/master.tex")
+;;
+;; in your init file.
+;;
+;; One issue: if `czm-preview-TeX-master' is non-nil and
+;; `czm-preview-mode' is activated, then ordinary LaTeX compilation
+;; via C-c C-c probably won't work correctly.  One workaround is to
+;; disable `czm-preview-mode' when compiling.  Another approach (what
+;; I do) is to avoid C-c C-c altogether and just have a latexmk
+;; process running in the background for each open TeX file.
+;;
+;; CAUTION: the implementation applies ADVICE to tex.el/preview.el,
+;; and so might be incompatible with future versions of the latter.
 
 ;;; Code:
 
@@ -82,6 +101,13 @@ TODO: document this better."
 For this to have any effect, it must be set before
 czm-preview-mode is activated for the first time."
   :type 'number
+  :group 'czm-preview)
+
+(defcustom czm-preview-enable-automatic-previews t
+  "Enable automatic previews?
+Set this to nil to turn off the automatic previews (while still
+retaining the other features of the provided minor mode)."
+  :type 'boolean
   :group 'czm-preview)
 
 ;;; ------------------------------ INTERNAL VARIABLES ------------------------------
@@ -1210,10 +1236,12 @@ smallest interval that contains this group."
   "Function called by the preview timer to update LaTeX previews."
   (interactive)
   (and
+   czm-preview-enable-automatic-previews
    czm-preview--timer
    czm-preview--timer-enabled
-   czm-preview--style-hooks-applied
-   font-lock-set-defaults ;; This is key.
+   TeX-style-hook-applied-p
+   ;; czm-preview--style-hooks-applied
+   ;; font-lock-set-defaults ;; This is key.
    czm-preview--keepalive
    (or (not czm-preview--region-time)
        (> (float-time) (+ czm-preview--region-time 0.25)))
@@ -1266,6 +1294,14 @@ smallest interval that contains this group."
 
 ;;; --------------------------------- COMMANDS ---------------------------------
 
+(defvar-local czm-preview--preview-auto-cache-preamble-orig nil
+  "Original value of `preview-auto-cache-preamble'.")
+
+(defvar-local czm-preview--TeX-master-orig nil
+  "Original value of `TeX-master'.")
+
+;; TODO: it should not be possible to activate the mode in a non-file
+;; buffer unless czm-preview-TeX-master is non-nil.
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
   :lighter " PrT"
@@ -1274,24 +1310,31 @@ smallest interval that contains this group."
   (if czm-preview-mode
     (progn
       (czm-preview--init)
-      ; TODO: these should be decoupled
+      
+      (czm-preview--reset-timer)
+      (setq-local czm-preview--timer-enabled t)
+      
+      (setq-local czm-preview--keepalive t)
+      (unless TeX-style-hook-applied-p
+        (TeX-update-style))
+      
+      (setq-local czm-preview--TeX-master-orig TeX-master)
       (when czm-preview-TeX-master
         (setq-local TeX-master czm-preview-TeX-master))
-      (setq-local TeX-PDF-mode nil)
-      
-      ;; Start the timer if it's not already running
-      (czm-preview--reset-timer)
-      ;; Enable the timer.
-      (setq-local czm-preview--timer-enabled t)
-      (setq-local czm-preview--keepalive t)
+      (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
+      (setq-local preview-auto-cache-preamble t)
       (message "czm-preview-mode enabled."))
     ;; Disable the timer.
     (setq-local czm-preview--timer-enabled nil)
     ;; Hacky:
     (setq-local czm-preview--active-region nil)
+    
 
     ;; I think the hooks add a benefit anyway, right?  Maybe just want a separate function
     (czm-preview--close)
+
+    (setq-local TeX-master czm-preview--TeX-master-orig)
+    (setq-local preview-auto-cache-preamble czm-preview--preview-auto-cache-preamble-orig)
 
     (message "czm-preview-mode disabled.")))
 
