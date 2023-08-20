@@ -1188,7 +1188,7 @@ smallest interval that contains this group."
    czm-preview--timer
    czm-preview--timer-enabled
    czm-preview--style-hooks-applied
-   font-lock-set-defaults ;; this is key
+   font-lock-set-defaults ;; This is key.
    czm-preview--keepalive
    (or (not czm-preview--region-time)
        (> (float-time) (+ czm-preview--region-time 0.25)))
