@@ -967,7 +967,7 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
 ;;;###autoload
-(defun find-next-math-block (&optional bound)
+(defun find-next-math-block-0 (&optional bound)
   (interactive)
   (unless bound (setq bound (point-max)))
   (catch 'found
@@ -1033,11 +1033,12 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
                 ((why (or env-name match))
                  (end-regexp
                   (cond
-                   ((member why '("$" "$$")) texmathp-toggle-regexp)
-                   ((string= why "\\[") "\\\\\\]")
-                   ((string= why "\\(") "\\\\)")
-                   ((member why texmathp-environments)
-                    (concat "\\\\end{" (regexp-quote env-name) "}"))))
+                    ((string= why "$") "\\$")
+                    ((string= why "$$") "\\$\\$")
+                    ((string= why "\\[") "\\\\\\]")
+                    ((string= why "\\(") "\\\\)")
+                    ((member why texmathp-environments)
+                     (concat "\\\\end{" (regexp-quote env-name) "}"))))
                  (notfound t))
               (while (re-search-forward end-regexp block-bound t)
                 (when (and (not (TeX-in-comment))
@@ -1046,7 +1047,13 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
                   (let ((inner-end (match-beginning 0))
                         (end (point)))
                     (throw 'found
-                           (list begin inner-begin inner-end end))))))))))))
+                      (list begin inner-begin inner-end end))))))))))))
+
+(defun find-next-math-block-show-contents (&optional bound)
+  (interactive)
+  (when-let ((block (find-next-math-block bound)))
+    (cl-destructuring-bind (begin inner-begin inner-end end) block
+      (message (buffer-substring-no-properties inner-begin inner-end)))))
 
 (defun czm-preview--find-top-level-math-intervals (beg end)
   "Find top-level LaTeX math envs between BEG and END.
