@@ -122,13 +122,6 @@ works when editing inside a preview."
   :type 'boolean
   :group 'czm-preview)
 
-(defcustom czm-preview-paragraphs-to-preview-beyond-window 2
-  "Controls how much to preview beyond the visible screen.
-This is the number of paragraphs to search beyond the visible
-screen when looking for a preview region."
-  :type 'integer
-  :group 'czm-preview)
-
 (defcustom czm-preview-characters-above-to-preview 5000
   "Controls how many characters above point to preview."
   :type 'integer
