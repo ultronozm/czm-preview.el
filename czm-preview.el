@@ -122,6 +122,23 @@ works when editing inside a preview."
   :type 'boolean
   :group 'czm-preview)
 
+(defcustom czm-preview-paragraphs-to-preview-beyond-window 2
+  "Controls how much to preview beyond the visible screen.
+This is the number of paragraphs to search beyond the visible
+screen when looking for a preview region."
+  :type 'integer
+  :group 'czm-preview)
+
+(defcustom czm-preview-characters-above-to-preview 5000
+  "Controls how many characters above point to preview."
+  :type 'integer
+  :group 'czm-preview)
+
+(defcustom czm-preview-characters-below-to-preview 10000
+  "Controls how many characters below poitn to preview."
+  :type 'integer
+  :group 'czm-preview)
+
 ;;; ------------------------------ INTERNAL VARIABLES ------------------------------
 
 (defvar czm-preview--debug nil
@@ -1163,13 +1180,17 @@ a string and returns t if it matches)."
                  (function :tag "Predicate"))
   :group 'czm-preview)
 
+
+
+
+
 (defun czm-preview--get-stale-chunk (beg end first)
   "Get convex hull of some stale envs between BEG and END.
 Return cons cell of beginning and ending positions.  FIRST
 determines whether to take from the beginning or the end."
   (when czm-preview--debug
     (message "czm-preview--first-stale-chunk: %s %s" beg end))
-  (message "end - beg : %s" (- end beg))
+  ;; (message "end - beg : %s" (- end beg))
   (when (< beg end (+ beg (* 2 czm-preview-max-region-radius)))
     (let* ((top-level-math-intervals
             (czm-preview--find-top-level-math-intervals beg end))
@@ -1228,13 +1249,6 @@ Return cons cell of beginning and ending positions."
 Return cons cell of beginning and ending positions."
   (czm-preview--get-stale-chunk beg end nil))
 
-(defcustom czm-preview-paragraphs-to-preview-beyond-window 2
-  "Controls how much to preview beyond the visible screen.
-This is the number of paragraphs to search beyond the visible
-screen when looking for a preview region."
-  :type 'integer
-  :group 'czm-preview)
-
 (defun czm-preview--preview-some-chunk ()
   "Run `preview-region' on an appropriate region.
 Identify top level math intervals in the window.  Find the first
@@ -1248,37 +1262,14 @@ smallest interval that contains this group."
     (let*
 	((above-window-beg
           (save-excursion
-            (let ((threshold (max
-                              (save-window-excursion
-                                (condition-case nil
-                                    (progn
-                                      (scroll-down)
-                                      (scroll-down))
-                                  (error nil))
-                                (recenter-top-bottom)
-                                (window-start))
-                              (- (point) czm-preview-max-region-radius))))
-              (goto-char threshold)
-              (backward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
-              (point))))
+            (backward-char czm-preview-characters-above-to-preview)
+            (backward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
+            (point)))
          (below-window-end
           (save-excursion
-            (let ((threshold (min (save-window-excursion
-                                    (condition-case nil
-                                        (progn
-                                          (scroll-up)
-                                          (scroll-up)
-                                          (scroll-up)
-                                          (scroll-up))
-                                      (error nil))
-                                    ;; (recenter-top-bottom)
-                                    (point)
-                                    ;; (window-end)
-                                    )
-                                  (+ (point) czm-preview-max-region-radius))))
-              (goto-char threshold)
-              (forward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
-              (point))))
+            (forward-char czm-preview-characters-below-to-preview)
+            (forward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
+            (point)))
          (action
           (lambda (interval)
             (let ((inhibit-message t)
