@@ -776,8 +776,7 @@ name(\\([^)]+\\))\\)\\|\
                                           (<= region-beg point-current)
                                           (< point-current region-end))
                                     (preview-toggle ov)
-                                    (push ov preview-temporary-opened)
-                                    ))
+                                    (push ov preview-temporary-opened)))
                                (with-current-buffer run-buffer
                                  (preview-log-error
                                   (list 'error
@@ -911,8 +910,7 @@ visible during edits.  The copy does TODO"
           (setq czm-preview--disabled-region-begin (overlay-start ovr))
 
           ;; (setq czm-preview--disabled-image (preview-make-image 'test))
-          (preview-delete-file filename)
-          )
+          (preview-delete-file filename))
       (file-error nil))
     (overlay-put ovr 'filenames nil)))
 
@@ -941,7 +939,7 @@ for the file extension."
   (if (and
         czm-preview--disabled-image
         (= czm-preview--disabled-region-begin (overlay-start ov)))
-      (progn 
+      (progn
         (overlay-put ov 'preview-image
                      (list (cons 'image (cdr czm-preview--disabled-image))))
         (setq czm-preview--disabled-image nil))
@@ -1002,7 +1000,7 @@ OVERRIDE DIFFERENCE: \"when czm-preview-enable-preview-face\"."
 ;;; ------------------------------ HOOKS ------------------------------
 
 (defun czm-preview--after-change-function (beg end _length)
-  "Called after changes in `czm-preview-mode'.
+  "Hook function for `czm-preview-mode'.
 Checks if the modification affects the active preview region and,
 if so, kills the current preview job.
 
@@ -1066,7 +1064,9 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
-(defun find-end-of-block (why bound)
+
+(defun czm-preview--find-end-of-block (why bound)
+  "Find end of LaTeX math block starting with WHY before BOUND."
   (catch 'found
     (let ((end-regexp
            (cond
@@ -1085,8 +1085,8 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
             (throw 'found
               (cons inner-end end))))))))
 
-;;;###autoload
-(defun find-next-math-block (&optional bound)
+(defun czm-preview--find-next-math-block (&optional bound)
+  "Find next LaTeX math block before BOUND."
   (interactive)
   (unless bound (setq bound (point-max)))
   (catch 'found
@@ -1112,15 +1112,16 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
                                           bound t)
                                          (match-beginning 0)
                                        bound)))
-                      (end-cons (find-end-of-block why block-bound))
+                      (end-cons (czm-preview--find-end-of-block why block-bound))
                       (inner-end (car end-cons))
                       (end (cdr end-cons)))
             (throw 'found
-                      (list begin inner-begin inner-end end))))))))
+                   (list begin inner-begin inner-end end))))))))
 
-(defun find-next-math-block-show-contents (&optional bound)
+(defun czm-preview--find-next-math-block-show-contents (&optional bound)
+  "Find next LaTeX math block before BOUND, and show its contents."
   (interactive)
-  (when-let ((block (find-next-math-block bound)))
+  (when-let ((block (czm-preview--find-next-math-block bound)))
     (cl-destructuring-bind (_begin inner-begin inner-end _end) block
       (message (buffer-substring-no-properties inner-begin inner-end)))))
 
@@ -1131,7 +1132,7 @@ Return list of cons cells containing beg and end positions."
     (let ((math-intervals '()))
       (goto-char beg)
       (while-let
-          ((block (find-next-math-block end)))
+          ((block (czm-preview--find-next-math-block end)))
         (cl-destructuring-bind (begin inner-begin inner-end end) block
           ;; check that contents are non-empty
           (when (string-match-p "[^[:space:]\n\r]"
@@ -1315,7 +1316,7 @@ smallest interval that contains this group."
                                         (match-beginning 0)
                                       (point-max))))
                            (end (cdr (save-excursion
-                                       (find-end-of-block why bound)))))
+                                       (czm-preview--find-end-of-block why bound)))))
                  (unless (and (string= why "$")
                               (string-match "[\n\r]"
                                             (buffer-substring-no-properties beg end)))
@@ -1353,10 +1354,9 @@ smallest interval that contains this group."
   (advice-add 'TeX-region-create :override #'czm-preview-override-TeX-region-create)
   (advice-add 'TeX-process-check :override #'czm-preview-override-TeX-process-check)
   (advice-add 'preview-inactive-string :override #'czm-preview-override-inactive-string)
-  (advice-add 'preview-disable :override #'czm-preview-override-preview-disable)  
+  (advice-add 'preview-disable :override #'czm-preview-override-preview-disable)
   (advice-add 'preview-gs-place :override #'czm-preview-override-gs-place)
-  (advice-add 'preview-toggle :override #'czm-preview-override-toggle)
-  )
+  (advice-add 'preview-toggle :override #'czm-preview-override-toggle))
 
 (defun czm-preview--close ()
   "Remove advice and hooks for `czm-preview'."
@@ -1373,8 +1373,7 @@ smallest interval that contains this group."
   (advice-remove 'preview-inactive-string #'czm-preview-override-inactive-string)
   (advice-remove 'preview-disable #'czm-preview-override-preview-disable)
   (advice-remove 'preview-gs-place #'czm-preview-override-gs-place)
-  (advice-remove 'preview-toggle #'czm-preview-override-toggle)
-  )
+  (advice-remove 'preview-toggle #'czm-preview-override-toggle))
 
 (defun czm-preview--reset-timer ()
   "Reset the preview timer."
@@ -1397,7 +1396,7 @@ smallest interval that contains this group."
 ;; buffer unless czm-preview-TeX-master is non-nil.
 (define-minor-mode czm-preview-mode
   "Minor mode for running LaTeX preview on a timer."
-  :lighter " PrT"
+  :lighter nil
   :global nil
   :group 'czm-preview
   (if czm-preview-mode
@@ -1415,8 +1414,8 @@ smallest interval that contains this group."
       (when czm-preview-TeX-master
         (setq-local TeX-master czm-preview-TeX-master))
       (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
-      (setq-local preview-auto-cache-preamble t)
-      (message "czm-preview-mode enabled."))
+      (setq-local preview-auto-cache-preamble t))
+    
     ;; Disable the timer.
     (setq-local czm-preview--timer-enabled nil)
     ;; Hacky:
@@ -1427,9 +1426,7 @@ smallest interval that contains this group."
     (czm-preview--close)
 
     (setq-local TeX-master czm-preview--TeX-master-orig)
-    (setq-local preview-auto-cache-preamble czm-preview--preview-auto-cache-preamble-orig)
-
-    (message "czm-preview-mode disabled.")))
+    (setq-local preview-auto-cache-preamble czm-preview--preview-auto-cache-preamble-orig)))
 
 
 
