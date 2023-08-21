@@ -59,8 +59,9 @@
 ;; TIP: dvi files generate faster than pdf, so for a snappier preview,
 ;; use (TeX-PDF-mode 0).
 ;;
-;; CAUTION: the implementation applies ADVICE to tex.el/preview.el,
-;; and so might be incompatible with future versions of the latter.
+;; CAUTION: this minor mode is implemented via ADVICE to the packages
+;; tex.el/preview.el, and so might be incompatible with future
+;; versions of those.
 
 ;;; Code:
 
@@ -90,7 +91,7 @@ TODO: document this better."
   :type 'string
   :group 'czm-preview)
 
-(defcustom czm-preview-max-region-radius 5000
+(defcustom czm-preview-max-region-radius 20000
   "Maximum radius of region to be previewed."
   :type 'number
   :group 'czm-preview)
@@ -111,6 +112,13 @@ czm-preview-mode is activated for the first time."
   "Enable automatic previews?
 Set this to nil to turn off the automatic previews (while still
 retaining the other features of the provided minor mode)."
+  :type 'boolean
+  :group 'czm-preview)
+
+(defcustom czm-preview-enable-preview-face nil
+  "If non-nil, enable `preview-face' for previews.
+I prefer to leave this disabled, so that transient mark mode
+works when editing inside a preview."
   :type 'boolean
   :group 'czm-preview)
 
@@ -927,6 +935,53 @@ for the file extension."
   (preview-add-urgentization #'preview-gs-urgentize ov run-buffer)
   (list ov))
 
+(defun czm-preview-override-toggle (ov &optional arg event)
+  "Toggle visibility of preview overlay OV.
+ARG can be one of the following: t displays the overlay,
+nil displays the underlying text, and `toggle' toggles.
+If EVENT is given, it indicates the window where the event
+occured, either by being a mouse event or by directly being
+the window in question.  This may be used for cursor restoration
+purposes.
+
+OVERRIDE DIFFERENCE: \"when czm-preview-enable-preview-face\"."
+  (let ((old-urgent (preview-remove-urgentization ov))
+        (preview-state
+         (if (if (eq arg 'toggle)
+                 (null (eq (overlay-get ov 'preview-state) 'active))
+               arg)
+             'active
+           'inactive))
+        (strings (overlay-get ov 'strings)))
+    (unless (eq (overlay-get ov 'preview-state) 'disabled)
+      (overlay-put ov 'preview-state preview-state)
+      (if (eq preview-state 'active)
+          (progn
+            (overlay-put ov 'category 'preview-overlay)
+            (if (eq (overlay-start ov) (overlay-end ov))
+                (overlay-put ov 'before-string (car strings))
+              (dolist (prop '(display keymap mouse-face help-echo))
+                (overlay-put ov prop
+                             (get-text-property 0 prop (car strings))))
+              (overlay-put ov 'before-string nil))
+            (overlay-put ov 'face nil))
+        (dolist (prop '(display keymap mouse-face help-echo))
+          (overlay-put ov prop nil))
+        (when czm-preview-enable-preview-face
+          (overlay-put ov 'face 'preview-face))
+        (unless (cdr strings)
+          (setcdr strings (preview-inactive-string ov)))
+        (overlay-put ov 'before-string (cdr strings)))
+      (if old-urgent
+          (apply #'preview-add-urgentization old-urgent))))
+  (if event
+      (preview-restore-position
+       ov
+       (if (windowp event)
+           event
+         (posn-window (event-start event))))))
+
+
 ;;; ------------------------------ HOOKS ------------------------------
 
 (defun czm-preview--after-change-function (beg end _length)
@@ -1108,23 +1163,25 @@ a string and returns t if it matches)."
                  (function :tag "Predicate"))
   :group 'czm-preview)
 
-(defun czm-preview--first-stale-chunk (beg end)
-  "Get convex hull of initial stale envs between BEG and END.
-Return cons cell of beginning and ending positions."
+(defun czm-preview--get-stale-chunk (beg end first)
+  "Get convex hull of some stale envs between BEG and END.
+Return cons cell of beginning and ending positions.  FIRST
+determines whether to take from the beginning or the end."
   (when czm-preview--debug
     (message "czm-preview--first-stale-chunk: %s %s" beg end))
+  (message "end - beg : %s" (- end beg))
   (when (< beg end (+ beg (* 2 czm-preview-max-region-radius)))
     (let* ((top-level-math-intervals
-	    (czm-preview--find-top-level-math-intervals beg end))
-	   (regions
+            (czm-preview--find-top-level-math-intervals beg end))
+           (regions
 	    (mapcar (lambda (interval)
 		      (buffer-substring-no-properties
 		       (car interval) (cdr interval)))
 		    top-level-math-intervals))
-	   (staleness
-	    (cl-mapcar (lambda (interval region)
+           (staleness
+            (cl-mapcar (lambda (interval region)
 		         (and
-			  (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
+		          (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
                           (not
                            (cond
                             ((stringp czm-preview-regions-not-to-preview)
@@ -1135,18 +1192,21 @@ Return cons cell of beginning and ending positions."
                              (funcall czm-preview-regions-not-to-preview region))
                             (t t)))
                           ;; (not (string-match-p (regexp-opt '("<++>" "<+++>"))
-			  ;; 	             region))
-			  ))
+		          ;; 	             region))
+		          ))
 		       top-level-math-intervals regions))
-	   (_line-numbers         ; only for stuff occuring on one line
-	    (mapcar (lambda (interval)
+           (_line-numbers        ; only for stuff occuring on one line
+            (mapcar (lambda (interval)
 		      (let ((line-beg (line-number-at-pos (car interval) ))
-			    (line-end (line-number-at-pos (cdr interval) )))
+		            (line-end (line-number-at-pos (cdr interval) )))
 		        (when (equal line-beg line-end)
-			  line-beg)))
-		    top-level-math-intervals)))
-      (when-let ((first-visible-chunk
-		  (car (czm-preview--non-nil-intervals staleness))))
+		          line-beg)))
+	            top-level-math-intervals)))
+      (when-let* ((non-nil-intervals (czm-preview--non-nil-intervals staleness))
+                  (first-visible-chunk
+                   (if first
+                       (car non-nil-intervals)
+                     (car (last non-nil-intervals)))))
         (let* ((first-interval-index (car first-visible-chunk))
 	       (last-interval-index (cdr first-visible-chunk))
 	       (first-interval (nth first-interval-index top-level-math-intervals))
@@ -1157,6 +1217,23 @@ Return cons cell of beginning and ending positions."
           (when czm-preview--debug
             (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
 	  (cons begin-pos end-pos))))))
+
+(defun czm-preview--first-stale-chunk (beg end)
+  "Get convex hull of initial stale envs between BEG and END.
+Return cons cell of beginning and ending positions."
+  (czm-preview--get-stale-chunk beg end t))
+
+(defun czm-preview--last-stale-chunk (beg end)
+  "Get convex hull of final stale envs between BEG and END.
+Return cons cell of beginning and ending positions."
+  (czm-preview--get-stale-chunk beg end nil))
+
+(defcustom czm-preview-paragraphs-to-preview-beyond-window 2
+  "Controls how much to preview beyond the visible screen.
+This is the number of paragraphs to search beyond the visible
+screen when looking for a preview region."
+  :type 'integer
+  :group 'czm-preview)
 
 (defun czm-preview--preview-some-chunk ()
   "Run `preview-region' on an appropriate region.
@@ -1169,24 +1246,42 @@ smallest interval that contains this group."
     (message "czm-preview--preview-some-chunk"))
   (unless (czm-preview--processes)
     (let*
-	((margin-search-paragraphs 3)
-	 (above-window-beg
-	  (save-excursion
-            (let ((threshold (max (window-start)
-                                  (- (point) czm-preview-max-region-radius))))
-	      (goto-char threshold)
-              (backward-paragraph margin-search-paragraphs)
+	((above-window-beg
+          (save-excursion
+            (let ((threshold (max
+                              (save-window-excursion
+                                (condition-case nil
+                                    (progn
+                                      (scroll-down)
+                                      (scroll-down))
+                                  (error nil))
+                                (recenter-top-bottom)
+                                (window-start))
+                              (- (point) czm-preview-max-region-radius))))
+              (goto-char threshold)
+              (backward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
               (point))))
-	 (below-window-end
-	  (save-excursion
-            (let ((threshold (min (window-end)
+         (below-window-end
+          (save-excursion
+            (let ((threshold (min (save-window-excursion
+                                    (condition-case nil
+                                        (progn
+                                          (scroll-up)
+                                          (scroll-up)
+                                          (scroll-up)
+                                          (scroll-up))
+                                      (error nil))
+                                    ;; (recenter-top-bottom)
+                                    (point)
+                                    ;; (window-end)
+                                    )
                                   (+ (point) czm-preview-max-region-radius))))
-	      (goto-char threshold)
-              (forward-paragraph margin-search-paragraphs)
+              (goto-char threshold)
+              (forward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
               (point))))
-	 (action
-	  (lambda (interval)
-	    (let ((inhibit-message t)
+         (action
+          (lambda (interval)
+            (let ((inhibit-message t)
                   (beg (car interval))
                   (end (cdr interval)))
               (when czm-preview--debug
@@ -1197,22 +1292,34 @@ smallest interval that contains this group."
       ;; arguments.  You're not really sure what's up with that.  For
       ;; now you'll just "plug the hole" by having
       ;; czm-preview--first-stale-chunk do nothing in such cases.
-      (let (interval)
+      (let (interval
+            (begin-document
+             (or
+              ;; if buffer contains \begin{document},
+              ;; then this is the beginning of that.
+              ;; otherwise it's the beginning of the
+              ;; buffer.
+              (save-excursion
+                (goto-char (point-min))
+                (when (search-forward "\\begin{document}" nil t)
+                  (match-beginning 0)))
+              (point-min))))
         (setq-local czm-preview--keepalive t)
         (cond
-         ((setq interval (czm-preview--first-stale-chunk
-                          above-window-beg
+         ((setq interval (czm-preview--last-stale-chunk
+                          (max begin-document above-window-beg)
 			  (point)))
           (when czm-preview--debug
             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
 	  (funcall action interval))
          ((setq interval (czm-preview--first-stale-chunk
-                          (point)
+                          (max begin-document (point))
                           below-window-end))
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point) below-window-end))
 	  (funcall action interval))
          ((and
+           (> (point) begin-document)
            (texmathp)
            (let ((why (car texmathp-why))
                  (beg (cdr texmathp-why)))
@@ -1268,6 +1375,7 @@ smallest interval that contains this group."
   (advice-add 'preview-inactive-string :override #'czm-preview-override-inactive-string)
   (advice-add 'preview-disable :override #'czm-preview-override-preview-disable)  
   (advice-add 'preview-gs-place :override #'czm-preview-override-gs-place)
+  (advice-add 'preview-toggle :override #'czm-preview-override-toggle)
   )
 
 (defun czm-preview--close ()
@@ -1285,6 +1393,7 @@ smallest interval that contains this group."
   (advice-remove 'preview-inactive-string #'czm-preview-override-inactive-string)
   (advice-remove 'preview-disable #'czm-preview-override-preview-disable)
   (advice-remove 'preview-gs-place #'czm-preview-override-gs-place)
+  (advice-remove 'preview-toggle #'czm-preview-override-toggle)
   )
 
 (defun czm-preview--reset-timer ()
