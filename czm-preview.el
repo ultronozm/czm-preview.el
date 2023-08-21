@@ -1319,12 +1319,9 @@ smallest interval that contains this group."
                  (unless (and (string= why "$")
                               (string-match "[\n\r]"
                                             (buffer-substring-no-properties beg end)))
-                   (test-do-it beg end)))))))
+                   (funcall action (cons beg end))))))))
          (t
           (setq-local czm-preview--keepalive nil)))))))
-
-(defun test-do-it (beg end)
-  (preview-region beg end))
 
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
