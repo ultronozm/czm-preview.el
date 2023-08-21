@@ -1407,8 +1407,6 @@ smallest interval that contains this group."
       (setq-local czm-preview--timer-enabled t)
       
       (setq-local czm-preview--keepalive t)
-      (unless TeX-style-hook-applied-p
-        (TeX-update-style))
       
       (setq-local czm-preview--TeX-master-orig TeX-master)
       (when czm-preview-TeX-master
