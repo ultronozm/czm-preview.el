@@ -1260,16 +1260,8 @@ smallest interval that contains this group."
     (message "czm-preview--preview-some-chunk"))
   (unless (czm-preview--processes)
     (let*
-	((above-window-beg
-          (save-excursion
-            (backward-char czm-preview-characters-above-to-preview)
-            (backward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
-            (point)))
-         (below-window-end
-          (save-excursion
-            (forward-char czm-preview-characters-below-to-preview)
-            (forward-paragraph czm-preview-paragraphs-to-preview-beyond-window)
-            (point)))
+	((above-window-beg (max (point-min) (- (point) czm-preview-characters-above-to-preview)))
+         (below-window-end (min (point-max) (+ (point) czm-preview-characters-below-to-preview)))
          (action
           (lambda (interval)
             (let ((inhibit-message t)
