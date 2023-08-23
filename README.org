@@ -63,7 +63,7 @@ If you've specified a master TeX file (see [[Configuration]]), then the above fe
 If you are visiting a .tex file that has an accompanying .aux file, then equation numbers in previews should be accurate.  To keep the .aux file up to date, I have a =latexmk= process run continuously in the background; I manage this using the package [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
 
 * Configuration
-It is recommended (but not required) that you specify a "master" TeX file containing a minimal preamble.  This is necessary to make this package usable in non-file buffers, and may also speed up preview generation.  You might also wish to activate the mode whenever you visit a TeX file, and to bind a key that toggles it (and if the mode stops working, then try restarting it).  To do all of these, refine the =use-package= declaration in your init file like so:
+It is recommended (but not required) that you specify a "master" TeX file containing a minimal preamble.  This is necessary to make this package usable in non-file buffers, and may also speed up preview generation.  You might also wish to activate the mode whenever you visit a TeX file, and to bind a key that toggles it.  (Such a key gives a handy way to restart the mode, which is worth trying if it stops working.)  To do all of these, refine the =use-package= declaration in your init file like so:
 #+begin_src elisp
 (use-package czm-preview
   :bind
