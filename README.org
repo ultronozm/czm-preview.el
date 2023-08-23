@@ -10,21 +10,23 @@ Does your neck hurt from turning between previewer windows and the source too of
 The purpose of preview-latex is to embed LaTeX environments such as display math or figures into the source buffers and switch conveniently between source and image representation.
 #+end_quote
 
-This package distills the modifications to my local copy of =preview.el= accumulated over ~17 years of near-daily usage:
+This package distills the modifications to my local copy of =preview.el= accumulated over the years:
 
-1. /LaTeX environments are previewed automatically./
+1. /LaTeX environments are previewed automatically/.
 
-   By contrast, stock AUCTeX provides features for generating all previews in various regions: a section, the document, the marked region, and so on.  You're not supposed to edit while the previews are generating, because doing so can mess up their positioning.  A typical workflow is thus to run the command =preview-section= (=C-c C-p C-s=) every few minutes, during pauses in editing.
+   With stock AUCTeX, one manually generates previews in various regions: the current section, the entire document, the marked region, and so on.  Also, you're not supposed to edit while the previews generate, because that can mess up their positioning.  A typical workflow is thus to run the command =preview-section= (=C-c C-p C-s=) every few minutes, during pauses in editing.  This introduces a bit of overhead if you prefer to have previews on by default.
 
-   This package offers a timer that continuously updates unpreviewed environments in a small neighborhood of the visible part of the buffer.  It also works fine if you edit while the previews generate.  These features are convenient if you're in the habit of using a TeX buffer like a blackboard, for thinking rather than just for publishing.
+   With this package, previews generate automatically in the visible buffer, and editing won't mess up their positioning.  These features are convenient if you're in the habit of using a TeX buffer like a blackboard, for thinking rather than just for publishing.
 
-2. /Previews remain visible while you edit them/, updating automatically if you stop typing for a moment.  I've found this feature useful when revising a paper with remote collaborators, via videoconferencing and screensharing.
+2. /Previews remain visible while you edit them/.
 
-3. /Previews work in non-file buffers/, e.g., [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Indirect-Buffers.html#:~:text=An%20indirect%20buffer%20cannot%20visit,effect%20on%20its%20base%20buffer.][indirect buffers]] and [[https://orgmode.org/manual/Editing-Source-Code.html][indirect org-mode source blocks]].
+   Moreover, they update automatically if you stop typing for a moment.  I've found this feature useful when revising a paper with remote collaborators, via videoconferencing and screensharing.
 
-   In particular, you can view and edit several parts of a TeX buffer simultaneously, with live previews for each.  By contrast, stock AUCTeX previews are restricted to file buffers.
+3. /Previews work in non-file buffers/.
 
-   Incidentally, a [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=65462][minor bug]] in =preview.el= (fixed in this package, and hopefully soon also in =preview.el=) makes it impractical to use indirect buffers with that package.
+   In particular, they work in [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Indirect-Buffers.html#:~:text=An%20indirect%20buffer%20cannot%20visit,effect%20on%20its%20base%20buffer.][indirect buffers]] and [[https://orgmode.org/manual/Editing-Source-Code.html][indirect org-mode source blocks]].  You can thus view and edit several parts of a TeX buffer simultaneously, with live previews for each.  By contrast, stock AUCTeX previews are restricted to file buffers.
+
+   Incidentally, a [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=65462][minor bug]] in =preview.el= (fixed in this package, and hopefully soon also in =preview.el=) makes it impractical to use indirect buffers.
 
 4. /Equation numbers are accurately depicted in previews/.
 
@@ -32,38 +34,25 @@ This package distills the modifications to my local copy of =preview.el= accumul
 
    This package gives correct equation numbers when visiting a .tex file that has an accompanying .aux file (e.g., generated continuously via latexmk, which I do via [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]]).
 
-   In-buffer numbering for other types of environments (theorems, ...) is provided by the package [[https://github.com/ultronozm/czm-tex-fold.el][czm-tex-fold.el]].  When using both packages, you can implement the suggestions of a collaborator or referee, such as "fix equation 3.8.1 and Theorem 3.5", without leaving the editor (or having to memorize your label numbers).
+   In-buffer numbering for other types of environments (theorems, ...) is provided by the package [[https://github.com/ultronozm/czm-tex-fold.el][czm-tex-fold.el]].  When using both packages, "everything" is numbered just like in the compiled document.  This is very convenient, e.g., when implementing the suggestions of a collaborator or referee ("fix equation 3.8.1 and Theorem 3.5").
 
-I believe that features 1-3 are also available in the package [[https://github.com/dandavison/xenops][xenops]], but they're implemented differently there: from the ground up, rather than using AUCTeX as a base.  (Incidentally, I've never really gotten the chance to try  =xenops=, which [[https://github.com/dandavison/xenops/issues][doesn't seem to work]] with recent versions of emacs.)
+Some of these features are also available in the package [[https://github.com/dandavison/xenops][xenops]], but they're implemented differently there: from the ground up, rather than using AUCTeX as a base.  Incidentally, I've never really gotten the chance to try  =xenops=, which [[https://github.com/dandavison/xenops/issues][doesn't seem to work]] with recent versions of emacs.
 
 
-* Installation
+* Configuration
 This package requires [[https://www.gnu.org/software/auctex/manual/auctex/Installation.html#Installation][AUCTeX]] and [[https://github.com/ultronozm/czm-tex-util.el][czm-tex-util.el]], so install those first, and check that the [[https://www.gnu.org/software/auctex/manual/preview-latex/index.html#Top][preview-latex]] feature of AUCTeX works.  
 
 Download this repository and install it using =M-x package-install-file=.  Then, add the following to your [[https://www.emacswiki.org/emacs/InitFile][init file]]:
 #+begin_src elisp
 (use-package czm-preview)
 #+end_src
-For a refined setup, see [[Configuration]].
 
-Here
-- =C-c u= should be replaced with whatever keybinding you'd like to use to toggle the mode,
-- "~/doit/preview-master.tex" should be
-  and you should delete the final =:hook= section if you don't want the mode activated upon start-up.
+That's the basic setup.  We now discuss some mild refinements:
+  - It is recommended (but not required) that you specify a "master" TeX file containing a minimal preamble.  Doing so is necessary to make this package usable in non-file buffers, and can also speed up preview generation.
+  - You might want the mode to activate automatically whenever you visit a TeX file.
+  - You might want to bind a key that toggles it.  (This gives a handy way to restart the mode, which is worth trying if it stops working.)
 
-* Usage
-
-** Basic
-Visit a TeX file, with AUCTeX's =LaTeX-mode= as the major-mode.  Run =M-x czm-preview-mode=.  Previews should automatically generate and remain visible during edits.
-
-** Non-file buffers
-If you've specified a master TeX file (see [[Configuration]]), then the above features should work in any =LaTeX-mode= buffer, e.g., [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Indirect-Buffers.html#:~:text=An%20indirect%20buffer%20cannot%20visit,effect%20on%20its%20base%20buffer.][indirect buffers]].
-
-** Equation numbers
-If you are visiting a .tex file that has an accompanying .aux file, then equation numbers in previews should be accurate.  To keep the .aux file up to date, I have a =latexmk= process run continuously in the background; I manage this using the package [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
-
-* Configuration
-It is recommended (but not required) that you specify a "master" TeX file containing a minimal preamble.  This is necessary to make this package usable in non-file buffers, and may also speed up preview generation.  You might also wish to activate the mode whenever you visit a TeX file, and to bind a key that toggles it.  (Such a key gives a handy way to restart the mode, which is worth trying if it stops working.)  To do all of these, refine the =use-package= declaration in your init file like so:
+To implement these refinements, use the following:
 #+begin_src elisp
 (use-package czm-preview
   :bind
@@ -74,13 +63,16 @@ It is recommended (but not required) that you specify a "master" TeX file contai
   :hook
   (LaTeX-mode . czm-preview-mode))
 #+end_src
-I've included my own "preview-master.tex" in the "tex" subfolder of this repository.  Edit it so that it contains whichever macros you use, put it somewhere convenient, and replace "~/doit/preview-master.tex" in the above with the appropriate path.
+I've included my own "preview-master.tex" in the "tex" subfolder of this repository.  Feel free to make your own, or edit mine so that it contains whichever macros you use.  Then replace "~/doit/preview-master.tex" in the above with the appropriate path.
+
+* Usage
+Visit a TeX file, with AUCTeX's =LaTeX-mode= as the major-mode.  Run =M-x czm-preview-mode= (unless you are using the refined setup described above, in which case this step is automatic).  If you've specified =czm-preview-TeX-master=, then the same should work in any =LaTeX-mode= buffer.
 
 * Issues
 
 - If =czm-preview-TeX-master= is non-nil and =czm-preview-mode= is activated, then ordinary LaTeX compilation via =C-c C-c= probably won't work correctly.  There are at least two workarounds:
   - Disable =czm-preview-mode= when you compile, then enable it again when you want to generate more previews.
-  - (What I do) Avoid compilation via =C-c C-c= altogether.  Instead, have a latexmk process running in the background for each TeX file that you work with.  I do this using [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
+  - (What I do) Avoid compilation via =C-c C-c= altogether.  Instead, have a latexmk process running in the background for each TeX file that you work with.  For this, I use [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
 
 * Tips for snappier previews
 
@@ -103,4 +95,4 @@ I've included my own "preview-master.tex" in the "tex" subfolder of this reposit
 
 * Caution
 
-This minor mode is implemented in part via =:override= advice applied to the packages tex.el/preview.el, and so might be incompatible with future versions of those.
+This minor mode is implemented in part via =:override= advice applied to the packages tex.el/preview.el, and so might be incompatible with future versions of those.  This is a poor design choice, guided by my practical needs.
