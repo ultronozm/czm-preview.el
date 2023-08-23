@@ -14,7 +14,7 @@ This package distills the modifications to my local copy of =preview.el= accumul
 
 1. /LaTeX environments are previewed automatically./
 
-   By contrast, stock AUCTeX provides features for generating all previews in various regions: a section, the document, the marked region, and so on.  You're not supposed to edit while the previews are generating, because doing so can mess up their positioning.  A typical workflow is thus to run the command =preview-section= (C-c C-p C-s) every few minutes, during pauses in editing.
+   By contrast, stock AUCTeX provides features for generating all previews in various regions: a section, the document, the marked region, and so on.  You're not supposed to edit while the previews are generating, because doing so can mess up their positioning.  A typical workflow is thus to run the command =preview-section= (=C-c C-p C-s=) every few minutes, during pauses in editing.
 
    This package offers a timer that continuously updates unpreviewed environments in a small neighborhood of the visible part of the buffer.  It also works fine if you edit while the previews generate.  These features are convenient if you're in the habit of using a TeX buffer like a blackboard, for thinking rather than just for publishing.
 
