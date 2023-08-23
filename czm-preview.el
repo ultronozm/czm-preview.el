@@ -96,11 +96,6 @@ TODO: document this better."
   :type 'number
   :group 'czm-preview)
 
-(defcustom czm-preview-latex-prefix-directory ""
-  "Prefix directory for LaTeX binaries."
-  :type 'string
-  :group 'czm-preview)
-
 (defcustom czm-preview-timer-interval 0.3
   "Interval for preview timer.
 For this to have any effect, it must be set before
