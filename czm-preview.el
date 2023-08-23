@@ -1407,6 +1407,18 @@ smallest interval that contains this group."
   :group 'czm-preview
   (if czm-preview-mode
     (progn
+      ;; TODO: is there some way to get these checks to "abort" the
+      ;; activation of the mode?
+      (unless (eq major-mode 'latex-mode)
+        (user-error "czm-preview-mode can only be activated in LaTeX buffers"))
+      (unless (buffer-file-name)
+        (unless czm-preview-TeX-master
+          (user-error "czm-preview-mode can only be activated in file buffers, unless
+you point `czm-preview-TeX-master' to a file -- see the README"))
+        (unless (file-exists-p czm-preview-TeX-master)
+          (user-error
+           (format "czm-preview-TeX-master (%s) does not exist" czm-preview-TeX-master))))
+
       (czm-preview--init)
       
       (czm-preview--reset-timer)
