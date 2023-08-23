@@ -164,7 +164,17 @@ preview is generated that replaces an old one.")
 (defvar-local czm-preview--disabled-region-begin nil
   "Beginning of the preview region that was most recently disabled.")
 
-(defvar-local czm-preview--keepalive t)
+(defvar-local czm-preview--keepalive t
+  "Used to keep track of when we should preview some more.")
+
+(defvar czm-preview--internal-tmp-files nil
+  "List of auxiliary temporary files, used to reduce flickering.")
+
+(defvar-local czm-preview--preview-auto-cache-preamble-orig nil
+  "Original value of `preview-auto-cache-preamble'.")
+
+(defvar-local czm-preview--TeX-master-orig nil
+  "Original value of `TeX-master'.")
 
 ;;; ------------------------------ OVERRIDES ------------------------------
 
@@ -867,7 +877,6 @@ rather than `preview-icon'."
          (goto-char (overlay-start ov))
          (if (bolp) "\n" ""))))))
 
-
 (defun czm-preview-override-preview-disable (ovr)
   "Change overlay behaviour of OVR after source edits.
 
@@ -885,10 +894,14 @@ visible during edits.  The copy does TODO"
     (condition-case nil
         (let* ((src (car filename))
                (dst (expand-file-name
-                      "test.png"
-                      (file-name-parent-directory
-                       (file-name-directory (car filename))))))
+                     (concat
+                      "test"
+                      (format-time-string "%Y%m%dT%H%M%S%6N"))
+                     (file-name-parent-directory
+                      (file-name-directory (car filename))))))
           (copy-file src dst t)
+          (set-file-times dst (current-time))
+          (push dst czm-preview--internal-tmp-files)
           (setq czm-preview--disabled-image
                 (create-image dst 'png nil
                               :ascent
@@ -1315,6 +1328,17 @@ smallest interval that contains this group."
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
   (interactive)
+  ;; for each file in czm-preview--internal-tmp-files more than 10
+  ;; seconds old, delete and remove from list
+  (let (newlist)
+    (dolist (filename czm-preview--internal-tmp-files)
+      (when (> (- (float-time) (float-time (nth 5 (file-attributes filename))))
+               10)
+        (delete-file filename))
+      (unless (file-exists-p filename)
+        (push filename newlist)))
+    (setq czm-preview--internal-tmp-files newlist))
+
   (and
    czm-preview-enable-automatic-previews
    czm-preview--timer
@@ -1374,12 +1398,6 @@ smallest interval that contains this group."
 
 ;;; --------------------------------- COMMANDS ---------------------------------
 
-(defvar-local czm-preview--preview-auto-cache-preamble-orig nil
-  "Original value of `preview-auto-cache-preamble'.")
-
-(defvar-local czm-preview--TeX-master-orig nil
-  "Original value of `TeX-master'.")
-
 ;; TODO: it should not be possible to activate the mode in a non-file
 ;; buffer unless czm-preview-TeX-master is non-nil.
 (define-minor-mode czm-preview-mode
@@ -1400,7 +1418,12 @@ smallest interval that contains this group."
       (when czm-preview-TeX-master
         (setq-local TeX-master czm-preview-TeX-master))
       (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
-      (setq-local preview-auto-cache-preamble t))
+      (setq-local preview-auto-cache-preamble t)
+
+      (add-hook 'kill-emacs-hook
+                (lambda ()
+                  (dolist (file czm-preview--internal-tmp-files)
+                    (ignore-errors (delete-file file))))))
     
     ;; Disable the timer.
     (setq-local czm-preview--timer-enabled nil)
