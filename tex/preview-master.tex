@@ -1,0 +1,347 @@
+\documentclass[reqno]{amsart}
+
+\renewcommand{\geq}{\geqslant} \renewcommand{\leq}{\leqslant}
+
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{amscd}
+% \usepackage{stmaryrd}
+% \usepackage{amsfonts}
+% \usepackage{minted}
+
+
+% \usepackage[all]{xy}
+% \usepackage{tikz}
+% \usetikzlibrary{matrix,arrows,decorations.pathmorphing}
+
+
+\makeatletter
+\newcommand*{\transpose}{%
+  {\mathpalette\@transpose{}}%
+}
+\newcommand*{\@transpose}[2]{%
+  % #1: math style
+  % #2: unused
+  \raisebox{\depth}{$\m@th#1\intercal$}%
+}
+\makeatother
+
+
+\makeatletter
+\newcommand*{\da@rightarrow}{\mathchar"0\hexnumber@\symAMSa 4B }
+\newcommand*{\da@leftarrow}{\mathchar"0\hexnumber@\symAMSa 4C }
+\newcommand*{\xdashrightarrow}[2][]{%
+  \mathrel{%
+    \mathpalette{\da@xarrow{#1}{#2}{}\da@rightarrow{\,}{}}{}%
+  }%
+}
+\newcommand{\xdashleftarrow}[2][]{%
+  \mathrel{%
+    \mathpalette{\da@xarrow{#1}{#2}\da@leftarrow{}{}{\,}}{}%
+  }%
+}
+\newcommand*{\da@xarrow}[7]{%
+  % #1: below
+  % #2: above
+  % #3: arrow left
+  % #4: arrow right
+  % #5: space left 
+  % #6: space right
+  % #7: math style 
+  \sbox0{$\ifx#7\scriptstyle\scriptscriptstyle\else\scriptstyle\fi#5#1#6\m@th$}%
+  \sbox2{$\ifx#7\scriptstyle\scriptscriptstyle\else\scriptstyle\fi#5#2#6\m@th$}%
+  \sbox4{$#7\dabar@\m@th$}%
+  \dimen@=\wd0 %
+  \ifdim\wd2 >\dimen@
+    \dimen@=\wd2 %   
+  \fi
+  \count@=2 %
+  \def\da@bars{\dabar@\dabar@}%
+  \@whiledim\count@\wd4<\dimen@\do{%
+    \advance\count@\@ne
+    \expandafter\def\expandafter\da@bars\expandafter{%
+      \da@bars
+      \dabar@ 
+    }%
+  }%  
+  \mathrel{#3}%
+  \mathrel{%   
+    \mathop{\da@bars}\limits
+    \ifx\\#1\\%
+    \else
+      _{\copy0}%
+    \fi
+    \ifx\\#2\\%
+    \else
+      ^{\copy2}%
+    \fi
+  }%   
+  \mathrel{#4}%
+}
+\makeatother
+
+% \DeclareMathOperator{\rg}{rg}
+
+% \usepackage{mathtools}
+% \DeclarePairedDelimiter{\paren}{(}{)}
+% \DeclarePairedDelimiter{\abs}{\lvert}{\rvert}
+% \DeclarePairedDelimiter{\norm}{\lVert}{\rVert}
+% \DeclarePairedDelimiter{\innerproduct}{\langle}{\rangle}
+
+\newcommand{\Of}[2]{{\operatorname{#1}} {\paren*{#2}}}
+\newcommand{\of}[2]{{{{#1}} {\paren*{#2}}}}
+
+\DeclareMathOperator{\Shim}{Shim}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\fdeg}{fdeg}
+\DeclareMathOperator{\SL}{SL}
+\DeclareMathOperator{\slLie}{\mathfrak{s}\mathfrak{l}}
+\DeclareMathOperator{\glLie}{\mathfrak{g}\mathfrak{l}}
+\newcommand{\pn}[1]{{\color{ForestGreen} \sf PN: [#1]}}
+\DeclareMathOperator{\Mp}{Mp}
+\DeclareMathOperator{\Mat}{Mat}
+\DeclareMathOperator{\GL}{GL}
+\DeclareMathOperator{\Gr}{Gr}
+\DeclareMathOperator{\GU}{GU}
+\def\gl{\mathfrak{g}\mathfrak{l}}
+\DeclareMathOperator{\odd}{odd}
+\DeclareMathOperator{\even}{even}
+\DeclareMathOperator{\GO}{GO}
+\DeclareMathOperator{\good}{good}
+\DeclareMathOperator{\bad}{bad}
+\DeclareMathOperator{\PGO}{PGO}
+\DeclareMathOperator{\htt}{ht}
+\DeclareMathOperator{\height}{height}
+\DeclareMathOperator{\Ass}{Ass}
+\DeclareMathOperator{\coheight}{coheight}
+\DeclareMathOperator{\GSO}{GSO}
+\DeclareMathOperator{\SO}{SO}
+\DeclareMathOperator{\so}{\mathfrak{s}\mathfrak{o}}
+\DeclareMathOperator{\su}{\mathfrak{s}\mathfrak{u}}
+\DeclareMathOperator{\ad}{ad}
+% \DeclareMathOperator{\sc}{sc}
+\DeclareMathOperator{\Ad}{Ad}
+\DeclareMathOperator{\disc}{disc}
+\DeclareMathOperator{\inv}{inv}
+\DeclareMathOperator{\Pic}{Pic}
+\DeclareMathOperator{\uc}{uc}
+\DeclareMathOperator{\Cl}{Cl}
+\DeclareMathOperator{\Clf}{Clf}
+\DeclareMathOperator{\Hom}{Hom}
+\DeclareMathOperator{\hol}{hol}
+\DeclareMathOperator{\Heis}{Heis}
+\DeclareMathOperator{\Haar}{Haar}
+\DeclareMathOperator{\h}{h}
+\def\sp{\mathfrak{s}\mathfrak{p}}
+\DeclareMathOperator{\heis}{\mathfrak{h}\mathfrak{e}\mathfrak{i}\mathfrak{s}}
+\DeclareMathOperator{\End}{End}
+\DeclareMathOperator{\JL}{JL}
+\DeclareMathOperator{\image}{image}
+\DeclareMathOperator{\red}{red}
+\def\div{\operatorname{div}}
+\def\eps{\varepsilon}
+\def\cHom{\mathcal{H}\operatorname{om}}
+\DeclareMathOperator{\Ops}{Ops}
+\DeclareMathOperator{\Symb}{Symb}
+\def\boldGL{\mathbf{G}\mathbf{L}}
+\def\boldSO{\mathbf{S}\mathbf{O}}
+\def\boldU{\mathbf{U}}
+\DeclareMathOperator{\hull}{hull}
+\DeclareMathOperator{\LL}{LL}
+\DeclareMathOperator{\PGL}{PGL}
+\DeclareMathOperator{\class}{class}
+\DeclareMathOperator{\lcm}{lcm}
+\DeclareMathOperator{\spann}{span}
+\DeclareMathOperator{\Exp}{Exp}
+\DeclareMathOperator{\ext}{ext}
+\DeclareMathOperator{\Ext}{Ext}
+\DeclareMathOperator{\Tor}{Tor}
+\DeclareMathOperator{\et}{et}
+\DeclareMathOperator{\tor}{tor}
+\DeclareMathOperator{\tors}{tors}
+\DeclareMathOperator{\pf}{pf}
+\DeclareMathOperator{\smooth}{smooth}
+\DeclareMathOperator{\prin}{prin}
+\DeclareMathOperator{\Kl}{Kl}
+\DeclareMathOperator{\der}{der}
+\DeclareMathOperator{\abs}{abs}
+\DeclareMathOperator{\Sub}{Sub}
+\DeclareMathOperator{\Comp}{Comp}
+\DeclareMathOperator{\Err}{Err}
+\DeclareMathOperator{\dom}{dom}
+\DeclareMathOperator{\radius}{radius}
+\DeclareMathOperator{\Fitt}{Fitt}
+\DeclareMathOperator{\Sel}{Sel}
+\DeclareMathOperator{\rad}{rad}
+\DeclareMathOperator{\id}{id}
+\DeclareMathOperator{\Center}{Center}
+\DeclareMathOperator{\Der}{Der}
+\DeclareMathOperator{\U}{U}
+\DeclareMathOperator{\norm}{norm}
+\DeclareMathOperator{\trace}{trace}
+\DeclareMathOperator{\Equid}{Equid}
+\DeclareMathOperator{\Feas}{Feas}
+\DeclareMathOperator{\bulk}{bulk}
+\DeclareMathOperator{\tail}{tail}
+\DeclareMathOperator{\sys}{sys}
+\DeclareMathOperator{\atan}{atan}
+\DeclareMathOperator{\Asai}{Asai}
+\DeclareMathOperator{\glob}{glob}
+\DeclareMathOperator{\Kuz}{Kuz}
+\DeclareMathOperator{\Irr}{Irr}
+\DeclareMathOperator{\GSp}{GSp}
+\DeclareMathOperator{\PGSp}{PGSp}
+\DeclareMathOperator{\BC}{BC}
+\DeclareMathOperator{\Ann}{Ann}
+\DeclareMathOperator{\Gen}{Gen}
+\DeclareMathOperator{\SU}{SU}
+\DeclareMathOperator{\PGSU}{PGSU}
+\DeclareMathOperator{\PMp}{PMp}
+\DeclareMathOperator{\PGMp}{PGMp}
+\DeclareMathOperator{\PB}{PB}
+\DeclareMathOperator{\ind}{ind}
+\DeclareMathOperator{\Jac}{Jac}
+\DeclareMathOperator{\jac}{jac}
+\DeclareMathOperator{\im}{im}
+\DeclareMathOperator{\Aut}{Aut}
+\DeclareMathOperator{\Int}{Int}
+\DeclareMathOperator{\PSL}{PSL}
+\DeclareMathOperator{\co}{co}
+\DeclareMathOperator{\irr}{irr}
+\DeclareMathOperator{\prim}{prim}
+\DeclareMathOperator{\bal}{bal}
+\DeclareMathOperator{\baln}{bal}
+\DeclareMathOperator{\dist}{dist}
+\DeclareMathOperator{\RS}{RS}
+\DeclareMathOperator{\Ram}{Ram}
+\DeclareMathOperator{\Sob}{Sob}
+\DeclareMathOperator{\Sol}{Sol}
+\DeclareMathOperator{\soc}{soc}
+\DeclareMathOperator{\nt}{nt}
+\DeclareMathOperator{\mic}{mic}
+\DeclareMathOperator{\Gal}{Gal}
+\DeclareMathOperator{\st}{st}
+\DeclareMathOperator{\std}{std}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\Sym}{Sym}
+\DeclareMathOperator{\gr}{gr}
+\DeclareMathOperator{\aff}{aff}
+\DeclareMathOperator{\Dil}{Dil}
+\DeclareMathOperator{\Lie}{Lie}
+\DeclareMathOperator{\Symp}{Symp}
+\DeclareMathOperator{\Stab}{Stab}
+\DeclareMathOperator{\St}{St}
+\DeclareMathOperator{\stab}{stab}
+\DeclareMathOperator{\codim}{codim}
+\DeclareMathOperator{\linear}{linear}
+\newcommand{\git}{/\!\!/}
+\DeclareMathOperator{\geom}{geom}
+\DeclareMathOperator{\spec}{spec}
+\def\O{\operatorname{O}}
+\DeclareMathOperator{\Au}{Aut}
+\DeclareMathOperator{\Fix}{Fix}
+\DeclareMathOperator{\Opp}{Op}
+\DeclareMathOperator{\opp}{op}
+\DeclareMathOperator{\Size}{Size}
+\DeclareMathOperator{\Save}{Save}
+% \DeclareMathOperator{\ker}{ker}
+\DeclareMathOperator{\coker}{coker}
+\DeclareMathOperator{\sym}{sym}
+\DeclareMathOperator{\mean}{mean}
+\DeclareMathOperator{\elliptic}{ell}
+\DeclareMathOperator{\nilpotent}{nil}
+\DeclareMathOperator{\hyperbolic}{hyp}
+\DeclareMathOperator{\newvector}{new}
+\DeclareMathOperator{\new}{new}
+\DeclareMathOperator{\full}{full}
+\newcommand{\qr}[2]{\left( \frac{#1}{#2} \right)}
+\DeclareMathOperator{\unr}{u}
+\DeclareMathOperator{\ram}{ram}
+% \DeclareMathOperator{\len}{len}
+\DeclareMathOperator{\fin}{fin}
+\DeclareMathOperator{\cusp}{cusp}
+\DeclareMathOperator{\curv}{curv}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\rk}{rk}
+\DeclareMathOperator{\pr}{pr}
+\DeclareMathOperator{\Transform}{Transform}
+\DeclareMathOperator{\mult}{mult}
+\DeclareMathOperator{\Eis}{Eis}
+\DeclareMathOperator{\reg}{reg}
+\DeclareMathOperator{\sing}{sing}
+\DeclareMathOperator{\alt}{alt}
+\DeclareMathOperator{\irreg}{irreg}
+\DeclareMathOperator{\sreg}{sreg}
+\DeclareMathOperator{\Wd}{Wd}
+\DeclareMathOperator{\Weil}{Weil}
+\DeclareMathOperator{\Th}{Th}
+\DeclareMathOperator{\Sp}{Sp}
+\DeclareMathOperator{\Ind}{Ind}
+\DeclareMathOperator{\Res}{Res}
+\DeclareMathOperator{\ini}{in}
+\DeclareMathOperator{\ord}{ord}
+\DeclareMathOperator{\osc}{osc}
+\DeclareMathOperator{\fluc}{fluc}
+\DeclareMathOperator{\size}{size}
+\DeclareMathOperator{\ann}{ann}
+\DeclareMathOperator{\equ}{eq}
+\DeclareMathOperator{\res}{res}
+\DeclareMathOperator{\pt}{pt}
+\DeclareMathOperator{\src}{source}
+\DeclareMathOperator{\Zcl}{Zcl}
+\DeclareMathOperator{\Func}{Func}
+\DeclareMathOperator{\Map}{Map}
+\DeclareMathOperator{\Frac}{Frac}
+\DeclareMathOperator{\Frob}{Frob}
+\DeclareMathOperator{\ev}{eval}
+\DeclareMathOperator{\pv}{pv}
+\DeclareMathOperator{\eval}{eval}
+\DeclareMathOperator{\Spec}{Spec}
+\DeclareMathOperator{\Speh}{Speh}
+\DeclareMathOperator{\Spin}{Spin}
+\DeclareMathOperator{\GSpin}{GSpin}
+\DeclareMathOperator{\Specm}{Specm}
+\DeclareMathOperator{\Sphere}{Sphere}
+\DeclareMathOperator{\Sqq}{Sq}
+\DeclareMathOperator{\Ball}{Ball}
+\DeclareMathOperator\Cond{\operatorname{Cond}}
+\DeclareMathOperator\proj{\operatorname{proj}}
+\DeclareMathOperator\Swan{\operatorname{Swan}}
+\DeclareMathOperator{\Proj}{Proj}
+\DeclareMathOperator{\bPB}{{\mathbf P}{\mathbf B}}
+\DeclareMathOperator{\Projm}{Projm}
+\DeclareMathOperator{\Tr}{Tr}
+\DeclareMathOperator{\Type}{Type}
+\DeclareMathOperator{\Prop}{Prop}
+\DeclareMathOperator{\vol}{vol}
+\DeclareMathOperator{\covol}{covol}
+\DeclareMathOperator{\Rep}{Rep}
+\DeclareMathOperator{\Cent}{Cent}
+\DeclareMathOperator{\val}{val}
+\DeclareMathOperator{\area}{area}
+\DeclareMathOperator{\nr}{nr}
+\DeclareMathOperator{\CM}{CM}
+\DeclareMathOperator{\CH}{CH}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\characteristic}{char}
+\DeclareMathOperator{\supp}{supp}
+
+
+\usepackage[displaymath,textmath,sections,graphics]{preview}
+\PreviewEnvironment{align*}
+\PreviewEnvironment{multline*}
+\PreviewEnvironment{tabular}
+\PreviewEnvironment{verbatim}
+\PreviewEnvironment{lstlisting}
+\PreviewEnvironment*{frame}
+\PreviewEnvironment*{alert}
+\PreviewEnvironment*{emph}
+\PreviewEnvironment*{textbf}
+
+
+
+\begin{document}
+
+$x$
+
+\end{document}
