@@ -80,7 +80,7 @@ I've included my own "preview-master.tex" in the "tex" subfolder of this reposit
 
 - If =czm-preview-TeX-master= is non-nil and =czm-preview-mode= is activated, then ordinary LaTeX compilation via =C-c C-c= probably won't work correctly.  There are at least two workarounds:
   - Disable =czm-preview-mode= when you compile, then enable it again when you want to generate more previews.
-  - (What I do) Avoid compilation via =C-c C-c= altogether.  Instead, having a latexmk process running in the background for each TeX file that you work with.  I do this using [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
+  - (What I do) Avoid compilation via =C-c C-c= altogether.  Instead, have a latexmk process running in the background for each TeX file that you work with.  I do this using [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]].
 
 * Tips for snappier previews
 
