@@ -77,7 +77,7 @@ Visit a TeX file, with AUCTeX's =LaTeX-mode= as the major-mode.  Run =M-x czm-pr
 
 * Tips for snappier previews
 
-- dvi files generate faster than pdf, so I recommend turning off =TeX-PDF-mode=, e.g., by adding =(TeX-PDF-mode 0)= to your [[https://www.emacswiki.org/emacs/InitFile][init file]].
+- dvi files generate faster than pdf, so I recommend turning off =TeX-PDF-mode=, e.g., by adding =(setq-default TeX-PDF-mode nil)= to your [[https://www.emacswiki.org/emacs/InitFile][init file]].
   
 - I have sometimes found older versions of TeX compilers to be faster than newer ones; it might be useful to experiment.  On one computer, I include the following in my init file, which says to generate previews using TeXLive 2020 rather than 2023:
   #+begin_src elisp
