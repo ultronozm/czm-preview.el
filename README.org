@@ -26,7 +26,7 @@ This package distills the modifications to my local copy of =preview.el= accumul
 
    In particular, they work in [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Indirect-Buffers.html#:~:text=An%20indirect%20buffer%20cannot%20visit,effect%20on%20its%20base%20buffer.][indirect buffers]] and [[https://orgmode.org/manual/Editing-Source-Code.html][indirect org-mode source blocks]].  You can thus view and edit several parts of a TeX buffer simultaneously, with live previews for each.  By contrast, stock AUCTeX previews are restricted to file buffers.
 
-   Incidentally, a [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=65462][minor bug]] in =preview.el= (fixed in this package, and hopefully soon also in =preview.el=) makes it impractical to use indirect buffers.
+   Incidentally, a [[https://debbugs.gnu.org/cgi/bugreport.cgi?bug=65462][minor bug]] in =preview.el= (fixed in this package, and now also in pre-release =preview.el=) makes it impractical to use indirect buffers.
 
 4. /Equation numbers are accurately depicted in previews/.
 
