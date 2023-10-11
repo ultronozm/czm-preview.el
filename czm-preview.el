@@ -1325,9 +1325,21 @@ smallest interval that contains this group."
          (t
           (setq-local czm-preview--keepalive nil)))))))
 
+
+(defun czm-preview-mode-conditionally-enable ()
+  "Enable `czm-preview-mode' if appropriate.
+Check that we are not visiting a bbl file."
+  (when
+      (not
+       (and
+        (buffer-file-name)
+        (string-match-p "\\.bbl\\'" (buffer-file-name))))
+    (czm-preview-mode 1)))
+
 (defun czm-preview--timer-function ()
   "Function called by the preview timer to update LaTeX previews."
   (interactive)
+
   ;; for each file in czm-preview--internal-tmp-files more than 10
   ;; seconds old, delete and remove from list
   (let (newlist)
@@ -1340,6 +1352,8 @@ smallest interval that contains this group."
     (setq czm-preview--internal-tmp-files newlist))
 
   (and
+   (eq major-mode 'latex-mode)
+   ;; file extension is not
    czm-preview-enable-automatic-previews
    czm-preview--timer
    czm-preview--timer-enabled
@@ -1350,7 +1364,6 @@ smallest interval that contains this group."
    (or (not czm-preview--region-time)
        (> (float-time) (+ czm-preview--region-time 0.25)))
    ;; (not czm-preview--active-region)
-   (eq major-mode 'latex-mode)
    (czm-preview--preview-some-chunk)))
 
 (defun czm-preview--init ()
