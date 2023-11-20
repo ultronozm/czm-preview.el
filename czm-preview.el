@@ -347,18 +347,35 @@ into STR as tags."
       ;; (latex-mode)
       (goto-char (point-min))
       (while (re-search-forward "\\\\label{\\([^}]+\\)}" nil t)
-	(let ((label (match-string 1)))
-	  (when-let ((number
-		      (with-current-buffer buf
-			(czm-tex-util-get-label-number label))))
-	    (when
-                ; hack - texmathp expects to be run in LaTeX-mode
+	       (let ((label (match-string 1)))
+	         (when-let ((number
+		                    (with-current-buffer buf
+			                     (czm-tex-util-get-label-number label))))
+	           (when
+                                        ; hack - texmathp expects to be run in LaTeX-mode
                 (let ((comment-start-skip
                        "\\(\\(^\\|[^\\
 ]\\)\\(\\\\\\\\\\)*\\)\\(%+[ 	]*\\)"))
                   (texmathp))
-	      (insert (format "\\tag{%s}" number))))))
-      (buffer-substring-no-properties (point-min) (point-max)))))
+	             (insert (format "\\tag{%s}" number))))))
+      (goto-char (point-min))
+      ;; delete blank lines
+      ;; (while (re-search-forward "^\\s-*$" nil t)
+      ;;   (replace-match "" nil nil)
+      ;;   (delete-char 1))
+      (buffer-substring-no-properties (point-min)
+                                      (point-max)))))
+
+(defun czm/tmp-delete-blank-lines-in-buffer ()
+  (interactive)
+  (goto-char (point-min))
+  ;; delete blank lines in buffer, making sure to delete newlines as we go
+  (while (re-search-forward "^\\s-*$" nil t)
+    (replace-match "" nil nil)
+    (delete-char 1))
+  )
+
+
 
 (defun czm-preview-override-region (begin end)
   "Run preview on region between BEGIN and END.
@@ -431,33 +448,36 @@ called in slightly unusual circumstances.  For details, see
 https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html."
   (with-temp-message nil
     (let (TeX-error-file TeX-error-offset snippet box counters
-			 file line
-			 (lsnippet 0) lstart (lfile "") lline lbuffer lpoint
-			 lcounters
-			 string after-string
-			 offset
-			 parsestate (case-fold-search nil)
-			 (run-buffer (current-buffer))
-			 (_run-directory default-directory)
-			 tempdir
-			 close-data
-			 open-data
-			 fast-hook
-			 slow-hook
-			 TeX-translate-location-file
-			 TeX-translate-location-line
-			 TeX-translate-location-error
-			 TeX-translate-location-offset
-			 TeX-translate-location-context
-			 TeX-translate-location-string)
+			                      file line
+			                      (lsnippet 0)
+                         lstart (lfile "")
+                         lline lbuffer lpoint
+			                      lcounters
+			                      string after-string
+			                      offset
+			                      parsestate (case-fold-search nil)
+			                      (run-buffer (current-buffer))
+			                      (_run-directory default-directory)
+			                      tempdir
+			                      close-data
+			                      open-data
+			                      fast-hook
+			                      slow-hook
+			                      TeX-translate-location-file
+			                      TeX-translate-location-line
+			                      TeX-translate-location-error
+			                      TeX-translate-location-offset
+			                      TeX-translate-location-context
+			                      TeX-translate-location-string)
       ;; clear parsing variables
       (dolist (var preview-parse-variables)
-        (set (nth 1 var) nil))
+        (set (nth 1 var)
+             nil))
       (goto-char (point-min))
       (unwind-protect
-           (progn
-             (while
-                 (re-search-forward "\
+          (progn
+            (while
+                (re-search-forward "\
 ^\\(!\\|\\(.*?\\):[0-9]+:\\) \\|\
 \(\\(/*\
 \\(?:\\.+[^()\r\n{} /]*\\|[^()\r\n{} ./]+\
@@ -469,297 +489,311 @@ https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html."
  !\\(?:offset(\\([---0-9]+\\))\\|\
 name(\\([^)]+\\))\\)\\|\
 ^Preview: \\([a-zA-Z]+\\) \\([^\n\r]*\\)\r?$" nil t)
-               ;;   Ok, here is a line by line breakdown:
-               ;;   match-alternative 1:
-               ;;   error indicator for TeX error, either style.
-               ;;   match-alternative 2:
-               ;;   The same, but file-line-error-style, matching on file name.
-               ;;   match-alternative 3:
-               ;;   Too ugly to describe in detail.  In short, we try to catch file
-               ;;   names built from path components that don't contain spaces or
-               ;;   other special characters once the file extension has started.
-               ;;
-               ;;   Position for searching immediately after the file name so as to
-               ;;   not miss closing parens or something.
-               ;;   (match-string 3) is the file name.
-               ;;   match-alternative 4:
-               ;;   )+\( \|$\)
-               ;;   a closing paren followed by the end of line or a space: a just
-               ;;   closed file.
-               ;;   match-alternative 5 (wrapped into one shy group with
-               ;;   match-alternative 6, so that the match on first char is slightly
-               ;;   faster):
-               ;;   !offset(\([---0-9]+\))
-               ;;   an AUCTeX offset message. (match-string 5) is the offset itself
-               ;;   !name(\([^)]+\))
-               ;;   an AUCTeX file name message.  (match-string 6) is the file name
-               ;;   TODO: Actually, the latter two should probably again match only
-               ;;   after a space or newline, since that it what \message produces.
-               ;;  disabled in prauctex.def:
-               ;;  \(?:Ov\|Und\)erfull \\.*[0-9]*--[0-9]*
-               ;;  \(?:.\{79\}
-               ;;  \)*.*$\)\|
-               ;;   This would have caught overfull box messages that consist of
-               ;;   several lines of context all with 79 characters in length except
-               ;;   of the last one.  prauctex.def kills all such messages.
-               (setq file (match-string-no-properties 2))
-               (cond
-                 ((match-beginning 1)
-                  (if (looking-at "\
+              ;;   Ok, here is a line by line breakdown:
+              ;;   match-alternative 1:
+              ;;   error indicator for TeX error, either style.
+              ;;   match-alternative 2:
+              ;;   The same, but file-line-error-style, matching on file name.
+              ;;   match-alternative 3:
+              ;;   Too ugly to describe in detail.  In short, we try to catch file
+              ;;   names built from path components that don't contain spaces or
+              ;;   other special characters once the file extension has started.
+              ;;
+              ;;   Position for searching immediately after the file name so as to
+              ;;   not miss closing parens or something.
+              ;;   (match-string 3) is the file name.
+              ;;   match-alternative 4:
+              ;;   )+\( \|$\)
+              ;;   a closing paren followed by the end of line or a space: a just
+              ;;   closed file.
+              ;;   match-alternative 5 (wrapped into one shy group with
+              ;;   match-alternative 6, so that the match on first char is slightly
+              ;;   faster):
+              ;;   !offset(\([---0-9]+\))
+              ;;   an AUCTeX offset message. (match-string 5) is the offset itself
+              ;;   !name(\([^)]+\))
+              ;;   an AUCTeX file name message.  (match-string 6) is the file name
+              ;;   TODO: Actually, the latter two should probably again match only
+              ;;   after a space or newline, since that it what \message produces.
+              ;;  disabled in prauctex.def:
+              ;;  \(?:Ov\|Und\)erfull \\.*[0-9]*--[0-9]*
+              ;;  \(?:.\{79\}
+              ;;  \)*.*$\)\|
+              ;;   This would have caught overfull box messages that consist of
+              ;;   several lines of context all with 79 characters in length except
+              ;;   of the last one.  prauctex.def kills all such messages.
+              (setq file (match-string-no-properties 2))
+              (cond
+               ((match-beginning 1)
+                (if (looking-at "\
 \\(?:Preview\\|Package Preview Error\\): Snippet \\([---0-9]+\\) \\(started\\|ended\\(\
 \\.? *(\\([---0-9]+\\)\\+\\([---0-9]+\\)x\\([---0-9]+\\))\\)?\\)\\.")
-                      (progn
-                        (when file
-                          (unless TeX-error-file
-                            (push nil TeX-error-file)
-                            (push nil TeX-error-offset))
-                          (unless (car TeX-error-offset)
-                            (rplaca TeX-error-file file)))
-                        (setq snippet (string-to-number (match-string 1))
-                              box (unless
-                                      (string= (match-string 2) "started")
-                                    (if (match-string 4)
-                                        (mapcar #'(lambda (x)
-                                                    (* (preview-get-magnification)
-                                                       (string-to-number x)))
-                                                (list
-                                                 (match-string 4)
-                                                 (match-string 5)
-                                                 (match-string 6)))
-                                      t))
-                              counters (mapcar #'cdr preview-parsed-counters)
+                    (progn
+                      (when file
+                        (unless TeX-error-file
+                          (push nil TeX-error-file)
+                          (push nil TeX-error-offset))
+                        (unless (car TeX-error-offset)
+                          (rplaca TeX-error-file file)))
+                      (setq snippet (string-to-number (match-string 1))
+                            box (unless
+                                    (string= (match-string 2)
+                                             "started")
+                                  (if (match-string 4)
+                                      (mapcar #'(lambda (x)
+                                                  (* (preview-get-magnification)
+                                                     (string-to-number x)))
+                                              (list
+                                               (match-string 4)
+                                               (match-string 5)
+                                               (match-string 6)))
+                                    t))
+                            counters (mapcar #'cdr preview-parsed-counters)
 
-                              ;; And the line number to position the cursor.
-                              line (progn
-                                     (setq lpoint (point))
-                                     (end-of-line)
-                                     ;;  variant 1: profiling seems to indicate the regexp-heavy solution
-                                     ;;  to be favorable.  Removing incomplete characters from the error
-                                     ;;  context is an absolute nuisance.
-                                     (and (re-search-forward "\
+                            ;; And the line number to position the cursor.
+                            line (progn
+                                   (setq lpoint (point))
+                                   (end-of-line)
+                                   ;;  variant 1: profiling seems to indicate the regexp-heavy solution
+                                   ;;  to be favorable.  Removing incomplete characters from the error
+                                   ;;  context is an absolute nuisance.
+                                   (and (re-search-forward "\
 ^l\\.\\([0-9]+\\) \\(\\.\\.\\.\\(?:\\^*\\(?:[89a-f][0-9a-f]\\|[]@-\\_?]\\)\\|\
 \[0-9a-f]?\\)\\)?\\([^\n\r]*?\\)\r?
 \\([^\n\r]*?\\)\\(\\(?:\\^+[89a-f]?\\)?\\.\\.\\.\\)?\r?$" nil t)
-                                          (string-to-number (match-string 1))))
-                              ;; And a string of the context to search for.
-                              string (and line (match-string 3))
-                              after-string (and line (buffer-substring
-                                                      (+ (match-beginning 4)
-                                                         (- (match-end 3)
-                                                            (match-beginning 0)))
-                                                      (match-end 4)))
+                                        (string-to-number (match-string 1))))
+                            ;; And a string of the context to search for.
+                            string (and line (match-string 3))
+                            after-string (and line (buffer-substring
+                                                    (+ (match-beginning 4)
+                                                       (- (match-end 3)
+                                                          (match-beginning 0)))
+                                                    (match-end 4)))
 
-                              ;; We may use these in another buffer.
-                              offset (or (car TeX-error-offset) 0)
-                              file (car TeX-error-file))
-                        (when (and (stringp file)
-                                   (or (string= file "<none>")
-                                       (TeX-match-extension file)
-                                       ;; OVERRIDE DIFFERENCE: we add
-                                       ;; the following two options,
-                                       ;; which support indirect buffers
-                                       ;; for .tex files and org-mode
-                                       ;; indirect source blocks.
-				       (string-match "\\.tex\\(<\\([^>]+\\)>\\)*$" file)
-				       (string-match "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$" file)))
-                          ;; if we are the first time round, check for fast hooks:
-                          (when (null parsestate)
-                            (setq open-data
-                                  (save-excursion (funcall open-closure))
-                                  tempdir TeX-active-tempdir)
-                            (dolist
-                                (lst (if (listp TeX-translate-location-hook)
-                                         TeX-translate-location-hook
-                                       (list TeX-translate-location-hook)))
-                              (let ((fast
-                                     (and (symbolp lst)
-                                          (get lst 'TeX-translate-via-list))))
-                                (if fast
-                                    (setq fast-hook
-                                          (nconc fast-hook (list fast)))
-                                  (setq slow-hook
-                                        (nconc slow-hook (list lst)))))))
-                          ;; Functions in `TeX-translate-location-hook'
-                          ;; may examine and modify the following variables.
-                          (setq TeX-translate-location-file file
-                                TeX-translate-location-line line
-                                ;; TeX-translate-location-error error
-                                TeX-translate-location-offset offset
-                                ;; TeX-translate-location-context context
-                                TeX-translate-location-string string)
-                          (condition-case err
-                              (save-excursion (mapc #'funcall slow-hook))
-                            (error (preview-log-error err "Translation hook")))
-                          (setq file TeX-translate-location-file
-                                line TeX-translate-location-line
-                                ;; error TeX-translate-location-error
-                                offset TeX-translate-location-offset
-                                ;; context TeX-translate-location-context
-                                string TeX-translate-location-string)
-                          (push (vector file (+ line offset)
-                                        string after-string
-                                        snippet box counters)
-                                parsestate)))
-                    ;; else normal error message
-                    (forward-line)
-                    (re-search-forward "^l\\.[0-9]" nil t)
-                    (forward-line 2)))
-                 ((match-beginning 3)
-                  ;; New file -- Push on stack
-                  (push (match-string-no-properties 3) TeX-error-file)
-                  (push nil TeX-error-offset)
-                  (goto-char (match-end 3)))
-                 ((match-beginning 4)
-                  ;; End of file -- Pop from stack
-                  (when (> (length TeX-error-file) 1)
-                    (pop TeX-error-file)
-                    (pop TeX-error-offset))
-                  (goto-char (1+ (match-beginning 0))))
-                 ((match-beginning 5)
-                  ;; Hook to change line numbers
-                  (setq TeX-error-offset
-                        (list (string-to-number (match-string 5)))))
-                 ((match-beginning 6)
-                  ;; Hook to change file name
-                  (setq TeX-error-file (list (match-string-no-properties 6))))
-                 ((match-beginning 7)
-                  (let ((var
-                         (assoc (match-string-no-properties 7)
-                                preview-parse-variables))
-                        (offset (- (match-beginning 0) (match-beginning 8)))
-                        (str (match-string-no-properties 8)))
-                    ;; paste together continuation lines:
-                    (while (= (- (length str) offset) 79)
-                      (search-forward-regexp "^\\([^\n\r]*\\)\r?$")
-                      (setq offset (- (length str))
-                            str (concat str (match-string-no-properties 1))))
-                    (when (and var
-                               (string-match (nth 2 var) str))
-                      (set (nth 1 var)
-                           (funcall (nth 4 var)
-                                    (match-string-no-properties
-                                     (nth 3 var)
-                                     str))))))))
-             (when (null parsestate)
-               (error "LaTeX found no preview images")))
+                            ;; We may use these in another buffer.
+                            offset (or (car TeX-error-offset)
+                                       0)
+                            file (car TeX-error-file))
+                      (when (and (stringp file)
+                                 (or (string= file "<none>")
+                                     (TeX-match-extension file)
+                                     ;; OVERRIDE DIFFERENCE: we add
+                                     ;; the following two options,
+                                     ;; which support indirect buffers
+                                     ;; for .tex files and org-mode
+                                     ;; indirect source blocks.
+				                                 (string-match "\\.tex\\(<\\([^>]+\\)>\\)*$" file)
+				                                 (string-match "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$" file)))
+                        ;; if we are the first time round, check for fast hooks:
+                        (when (null parsestate)
+                          (setq open-data
+                                (save-excursion (funcall open-closure))
+                                tempdir TeX-active-tempdir)
+                          (dolist
+                              (lst (if (listp TeX-translate-location-hook)
+                                       TeX-translate-location-hook
+                                     (list TeX-translate-location-hook)))
+                            (let ((fast
+                                   (and (symbolp lst)
+                                        (get lst 'TeX-translate-via-list))))
+                              (if fast
+                                  (setq fast-hook
+                                        (nconc fast-hook (list fast)))
+                                (setq slow-hook
+                                      (nconc slow-hook (list lst)))))))
+                        ;; Functions in `TeX-translate-location-hook'
+                        ;; may examine and modify the following variables.
+                        (setq TeX-translate-location-file file
+                              TeX-translate-location-line line
+                              ;; TeX-translate-location-error error
+                              TeX-translate-location-offset offset
+                              ;; TeX-translate-location-context context
+                              TeX-translate-location-string string)
+                        (condition-case err
+                            (save-excursion (mapc #'funcall slow-hook))
+                          (error (preview-log-error err "Translation hook")))
+                        (setq file TeX-translate-location-file
+                              line TeX-translate-location-line
+                              ;; error TeX-translate-location-error
+                              offset TeX-translate-location-offset
+                              ;; context TeX-translate-location-context
+                              string TeX-translate-location-string)
+                        (push (vector file (+ line offset)
+                                      string after-string
+                                      snippet box counters)
+                              parsestate)))
+                  ;; else normal error message
+                  (forward-line)
+                  (re-search-forward "^l\\.[0-9]" nil t)
+                  (forward-line 2)))
+               ((match-beginning 3)
+                ;; New file -- Push on stack
+                (push (match-string-no-properties 3)
+                      TeX-error-file)
+                (push nil TeX-error-offset)
+                (goto-char (match-end 3)))
+               ((match-beginning 4)
+                ;; End of file -- Pop from stack
+                (when (> (length TeX-error-file)
+                         1)
+                  (pop TeX-error-file)
+                  (pop TeX-error-offset))
+                (goto-char (1+ (match-beginning 0))))
+               ((match-beginning 5)
+                ;; Hook to change line numbers
+                (setq TeX-error-offset
+                      (list (string-to-number (match-string 5)))))
+               ((match-beginning 6)
+                ;; Hook to change file name
+                (setq TeX-error-file (list (match-string-no-properties 6))))
+               ((match-beginning 7)
+                (let ((var
+                       (assoc (match-string-no-properties 7)
+                              preview-parse-variables))
+                      (offset (- (match-beginning 0)
+                                 (match-beginning 8)))
+                      (str (match-string-no-properties 8)))
+                  ;; paste together continuation lines:
+                  (while (= (- (length str)
+                               offset)
+                            79)
+                    (search-forward-regexp "^\\([^\n\r]*\\)\r?$")
+                    (setq offset (- (length str))
+                          str (concat str (match-string-no-properties 1))))
+                  (when (and var
+                             (string-match (nth 2 var)
+                                           str))
+                    (set (nth 1 var)
+                         (funcall (nth 4 var)
+                                  (match-string-no-properties
+                                   (nth 3 var)
+                                   str))))))))
+            (when (null parsestate)
+              (error "LaTeX found no preview images")))
         (unwind-protect
-             (save-excursion
-               (setq parsestate (nreverse parsestate))
-               (condition-case err
-                   (dolist (fun fast-hook)
-                     (setq parsestate
-                           (save-excursion (funcall fun parsestate))))
-                 (error (preview-log-error err "Fast translation hook")))
-               (setq snippet 0)
-               (dolist (state parsestate)
-                 (setq lsnippet snippet
-                       file (aref state 0)
-                       line (aref state 1)
-                       string (aref state 2)
-                       after-string (aref state 3)
-                       snippet (aref state 4)
-                       box (aref state 5)
-                       counters (aref state 6))
-                 (unless (string= lfile file)
-                   ;; TODO: we had deleted the above "unless"
-                   ;; condition.  Should we keep it out, or was that
-                   ;; accidental?
-                   ;;
-                   ;; TODO: document the next bit.
-                   (let ((buffer (or (get-buffer (file-name-nondirectory file))
-                                     (find-buffer-visiting file))))
-		     (when buffer
-		       (set-buffer buffer)))
-		   (setq lfile file))
-                 (save-excursion
-                   (let ((point-current (point)))
-                     (save-restriction
-                       (widen)
-                       ;; a fast hook might have positioned us already:
-                       (if (number-or-marker-p string)
-                           (progn
-                             (goto-char string)
-                             (setq lpoint
-                                   (if (number-or-marker-p after-string)
-                                       after-string
-                                     (line-beginning-position))))
-                         (if (and (eq (current-buffer) lbuffer)
-                                  (<= lline line))
-                             ;; while Emacs does the perfectly correct
-                             ;; thing even when when the line differences
-                             ;; get zero or negative, I don't trust this
-                             ;; to be universally the case across other
-                             ;; implementations.  Besides, if the line
-                             ;; number gets smaller again, we are probably
-                             ;; rereading the file, and restarting from
-                             ;; the beginning will probably be faster.
-                             (progn
-                               (goto-char lpoint)
-                               (if (/= lline line)
-                                   (if (eq selective-display t)
-                                       (re-search-forward "[\n\C-m]" nil
-                                                          'end
-                                                          (- line lline))
-                                     (forward-line (- line lline)))))
-                           (goto-char (point-min))
-                           (forward-line (1- line)))
-                         (setq lpoint (point))
+            (save-excursion
+              (setq parsestate (nreverse parsestate))
+              (condition-case err
+                  (dolist (fun fast-hook)
+                    (setq parsestate
+                          (save-excursion (funcall fun parsestate))))
+                (error (preview-log-error err "Fast translation hook")))
+              (setq snippet 0)
+              (dolist (state parsestate)
+                (setq lsnippet snippet
+                      file (aref state 0)
+                      line (aref state 1)
+                      string (aref state 2)
+                      after-string (aref state 3)
+                      snippet (aref state 4)
+                      box (aref state 5)
+                      counters (aref state 6))
+                (unless (string= lfile file)
+                  ;; TODO: we had deleted the above "unless"
+                  ;; condition.  Should we keep it out, or was that
+                  ;; accidental?
+                  ;;
+                  ;; TODO: document the next bit.
+                  (let ((buffer (or (get-buffer (file-name-nondirectory file))
+                                    (find-buffer-visiting file))))
+		                  (when buffer
+		                    (set-buffer buffer)))
+		                (setq lfile file))
+                (save-excursion
+                  (let ((point-current (point)))
+                    (save-restriction
+                      (widen)
+                      ;; a fast hook might have positioned us already:
+                      (if (number-or-marker-p string)
+                          (progn
+                            (goto-char string)
+                            (setq lpoint
+                                  (if (number-or-marker-p after-string)
+                                      after-string
+                                    (line-beginning-position))))
+                        (if (and (eq (current-buffer)
+                                     lbuffer)
+                                 (<= lline line))
+                            ;; while Emacs does the perfectly correct
+                            ;; thing even when when the line differences
+                            ;; get zero or negative, I don't trust this
+                            ;; to be universally the case across other
+                            ;; implementations.  Besides, if the line
+                            ;; number gets smaller again, we are probably
+                            ;; rereading the file, and restarting from
+                            ;; the beginning will probably be faster.
+                            (progn
+                              (goto-char lpoint)
+                              (if (/= lline line)
+                                  (if (eq selective-display t)
+                                      (re-search-forward "[\n\C-m]" nil
+                                                         'end
+                                                         (- line lline))
+                                    (forward-line (- line lline)))))
+                          (goto-char (point-min))
+                          (forward-line (1- line)))
+                        (setq lpoint (point))
 
-                         ;; OVERRIDE DIFFERENCE: We insert the following
-                         ;; block, which fixes a subtle bug; see
-                         ;; https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html
-		         (and
-                          czm-preview--region-begin
-		          (< (point) czm-preview--region-begin)
-		          (goto-char czm-preview--region-begin))
-                         
-                         (cond
-                           ((search-forward (concat string after-string)
-                                            (line-end-position) t)
-                            (backward-char (length after-string)))
-                           ;;ok, transform ^^ sequences
-                           ((search-forward-regexp
-                             (concat "\\("
-                                     (setq string
-                                           (preview-error-quote
-                                            string))
-                                     "\\)"
-                                     (setq after-string
-                                           (preview-error-quote
-                                            after-string)))
-                             (line-end-position) t)
-                            (goto-char (match-end 1)))
-                           ((search-forward-regexp
-                             (concat "\\("
-                                     (if (string-match
-                                          "^[^\0-\177]\\{1,6\\}" string)
-                                         (setq string
-                                               (substring string (match-end 0)))
-                                       string)
-                                     "\\)"
-                                     (if (string-match
-                                          "[^\0-\177]\\{1,6\\}$" after-string)
-                                         (setq after-string
-                                               (substring after-string
-                                                          0 (match-beginning 0)))))
-                             (line-end-position) t)
-                            (goto-char (match-end 1)))
-                           (t (search-forward-regexp
-                               string
-                               (line-end-position) t))))
-                       (setq lline line
-                             lbuffer (current-buffer))
-                       (if box
-                           (progn
-                             (if (and lstart (= snippet lsnippet))
-                                 (let* ((region-beg (save-excursion
-                                                      (preview-back-command
-                                                       (= (prog1 (point)
-                                                            (goto-char lstart))
-                                                          lstart))
-                                                      (point)))
-                                        (region-end (point))
-                                        (ovl (preview-place-preview
+                        ;; OVERRIDE DIFFERENCE: We insert the following
+                        ;; block, which fixes a subtle bug; see
+                        ;; https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html
+		                      (and
+                         czm-preview--region-begin
+		                       (< (point)
+                            czm-preview--region-begin)
+		                       (goto-char czm-preview--region-begin))
+                        
+                        (cond
+                         ((search-forward (concat string after-string)
+                                          (line-end-position)
+                                          t)
+                          (backward-char (length after-string)))
+                         ;;ok, transform ^^ sequences
+                         ((search-forward-regexp
+                           (concat "\\("
+                                   (setq string
+                                         (preview-error-quote
+                                          string))
+                                   "\\)"
+                                   (setq after-string
+                                         (preview-error-quote
+                                          after-string)))
+                           (line-end-position)
+                           t)
+                          (goto-char (match-end 1)))
+                         ((search-forward-regexp
+                           (concat "\\("
+                                   (if (string-match
+                                        "^[^\0-\177]\\{1,6\\}" string)
+                                       (setq string
+                                             (substring string (match-end 0)))
+                                     string)
+                                   "\\)"
+                                   (if (string-match
+                                        "[^\0-\177]\\{1,6\\}$" after-string)
+                                       (setq after-string
+                                             (substring after-string
+                                                        0 (match-beginning 0)))))
+                           (line-end-position)
+                           t)
+                          (goto-char (match-end 1)))
+                         (t (search-forward-regexp
+                             string
+                             (line-end-position)
+                             t))))
+                      (setq lline line
+                            lbuffer (current-buffer))
+                      (if box
+                          (progn
+                            (if (and lstart (= snippet lsnippet))
+                                (let* ((region-beg (save-excursion
+                                                     (preview-back-command
+                                                      (= (prog1 (point)
+                                                           (goto-char lstart))
+                                                         lstart))
+                                                     (point)))
+                                       (region-end (point))
+                                       (ovl (preview-place-preview
                                              snippet
                                              region-beg
                                              region-end
@@ -767,33 +801,37 @@ name(\\([^)]+\\))\\)\\|\
                                              (cons lcounters counters)
                                              tempdir
                                              (cdr open-data)))
-                                        (ov (car ovl)))
-                                   (setq close-data
-                                         (nconc ovl close-data))
-                                   (when (and
-                                          (<= region-beg point-current)
-                                          (< point-current region-end))
+                                       (ov (car ovl)))
+                                  (setq close-data
+                                        (nconc ovl close-data))
+                                  (when (and
+                                         (<= region-beg point-current)
+                                         (< point-current region-end))
                                     (preview-toggle ov)
                                     (push ov preview-temporary-opened)))
-                               (with-current-buffer run-buffer
-                                 (preview-log-error
-                                  (list 'error
-                                        (format
-                                         "End of Preview snippet %d unexpected"
-                                         snippet)) "Parser")))
-                             (setq lstart nil))
-                         ;; else-part of if box
-                         (setq lstart (point) lcounters counters)
-                         ;; >= because snippets in between might have
-                         ;; been ignored because of TeX-default-extension
-                         (unless (>= snippet (1+ lsnippet))
-                           (with-current-buffer run-buffer
-                             (preview-log-error
-                              (list 'error
-                                    (format
-                                     "Preview snippet %d out of sequence"
-                                     snippet)) "Parser")))))))))
-          (preview-call-hook 'close (car open-data) close-data))))))
+                              (with-current-buffer run-buffer
+                                (preview-log-error
+                                 (list 'error
+                                       (format
+                                        "End of Preview snippet %d unexpected"
+                                        snippet))
+                                 "Parser")))
+                            (setq lstart nil))
+                        ;; else-part of if box
+                        (setq lstart (point)
+                              lcounters counters)
+                        ;; >= because snippets in between might have
+                        ;; been ignored because of TeX-default-extension
+                        (unless (>= snippet (1+ lsnippet))
+                          (with-current-buffer run-buffer
+                            (preview-log-error
+                             (list 'error
+                                   (format
+                                    "Preview snippet %d out of sequence"
+                                    snippet))
+                             "Parser")))))))))
+          (preview-call-hook 'close (car open-data)
+                             close-data))))))
 
 (defun czm-preview-override-kill-buffer-cleanup (&optional buf)
   "This is a cleanup function just for use in hooks.
