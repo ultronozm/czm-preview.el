@@ -88,7 +88,7 @@
 (defcustom czm-preview-TeX-master nil
   "TeX-master value to be used for AUCTeX preview.
 TODO: document this better."
-  :type 'string
+  :type 'file
   :group 'czm-preview)
 
 (defcustom czm-preview-max-region-radius 20000
