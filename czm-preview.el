@@ -1459,8 +1459,7 @@ Check that we are not visiting a bbl file."
     (progn
       ;; TODO: is there some way to get these checks to "abort" the
       ;; activation of the mode?
-      (unless (eq major-mode 'latex-mode)
-        (user-error "czm-preview-mode can only be activated in LaTeX buffers"))
+
       (unless (buffer-file-name)
         (unless czm-preview-TeX-master
           (user-error "czm-preview-mode can only be activated in file buffers, unless
