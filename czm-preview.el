@@ -429,6 +429,20 @@ END and the current time) in buffer-local variables.  TODO: why?"
 			      (preview-string-expand preview-LaTeX-command))
 			     preview-LaTeX-command-replacements)))
 
+(defcustom czm-preview-allowed-files
+  "Determine which non-tex files can be previewed.
+List of regexps or functions.  The regexps are called with
+string-match-p.  The functions are called with the file name as
+argument and should return non-nil if the file should have
+previews generated.  See the corresponding part of the source
+code of `czm-preview-override-parse-messages' for details."
+  '("\\.tex\\(<\\([^>]+\\)>\\)*$"
+    "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$"
+    "\\.lean$"
+    )
+  :type '(repeat (choice regexp function))
+  :group 'czm-preview)
+
 (defun czm-preview-override-parse-messages (open-closure)
   "Turn all preview snippets into overlays.
 This parses the pseudo error messages from the preview document
@@ -578,12 +592,17 @@ name(\\([^)]+\\))\\)\\|\
                                    (or (string= file "<none>")
                                        (TeX-match-extension file)
                                        ;; OVERRIDE DIFFERENCE: we add
-                                       ;; the following two options,
-                                       ;; which support indirect buffers
-                                       ;; for .tex files and org-mode
-                                       ;; indirect source blocks.
-				                                   (string-match "\\.tex\\(<\\([^>]+\\)>\\)*$" file)
-				                                   (string-match "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$" file)))
+                                       ;; the following option, which
+                                       ;; (by default) supports
+                                       ;; indirect buffers for .tex
+                                       ;; files, org-mode indirect
+                                       ;; source blocks, lean files
+                                       ;; and whatever else.
+                                       (or (cl-some (lambda (x)
+                                                      (if (stringp x)
+                                                          (string-match-p x file)
+                                                        (funcall x file)))
+                                                    czm-preview-allowed-files))))
                           ;; if we are the first time round, check for fast hooks:
                           (when (null parsestate)
                             (setq open-data
@@ -1447,6 +1466,8 @@ Check that we are not visiting a bbl file."
         (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
 
 ;;; --------------------------------- COMMANDS ---------------------------------
+
+
 
 ;; TODO: it should not be possible to activate the mode in a non-file
 ;; buffer unless czm-preview-TeX-master is non-nil.
