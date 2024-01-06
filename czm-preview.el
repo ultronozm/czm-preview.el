@@ -1253,49 +1253,53 @@ determines whether to take from the beginning or the end."
     (let* ((top-level-math-intervals
             (czm-preview--find-top-level-math-intervals beg end))
            (regions
-	    (mapcar (lambda (interval)
-		      (buffer-substring-no-properties
-		       (car interval) (cdr interval)))
-		    top-level-math-intervals))
+	           (mapcar (lambda (interval)
+		                    (buffer-substring-no-properties
+		                     (car interval)
+                       (cdr interval)))
+		                  top-level-math-intervals))
            (staleness
             (cl-mapcar (lambda (interval region)
-		         (and
-		          (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
+		                       (and
+		                        (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
                           (not
                            (cond
                             ((stringp czm-preview-regions-not-to-preview)
                              (string-match-p czm-preview-regions-not-to-preview region))
                             ((listp czm-preview-regions-not-to-preview)
-                             (string-match-p (regexp-opt czm-preview-regions-not-to-preview) region))
+                             (string-match-p (regexp-opt czm-preview-regions-not-to-preview)
+                                             region))
                             ((functionp czm-preview-regions-not-to-preview)
                              (funcall czm-preview-regions-not-to-preview region))
                             (t t)))
                           ;; (not (string-match-p (regexp-opt '("<++>" "<+++>"))
-		          ;; 	             region))
-		          ))
-		       top-level-math-intervals regions))
+		                        ;; 	             region))
+		                        ))
+		                     top-level-math-intervals regions))
            (_line-numbers        ; only for stuff occuring on one line
             (mapcar (lambda (interval)
-		      (let ((line-beg (line-number-at-pos (car interval) ))
-		            (line-end (line-number-at-pos (cdr interval) )))
-		        (when (equal line-beg line-end)
-		          line-beg)))
-	            top-level-math-intervals)))
+		                    (let ((line-beg (line-number-at-pos (car interval)
+                                                          ))
+		                          (line-end (line-number-at-pos (cdr interval)
+                                                          )))
+		                      (when (equal line-beg line-end)
+		                        line-beg)))
+	                   top-level-math-intervals)))
       (when-let* ((non-nil-intervals (czm-preview--non-nil-intervals staleness))
                   (first-visible-chunk
                    (if first
                        (car non-nil-intervals)
                      (car (last non-nil-intervals)))))
         (let* ((first-interval-index (car first-visible-chunk))
-	       (last-interval-index (cdr first-visible-chunk))
-	       (first-interval (nth first-interval-index top-level-math-intervals))
-	       (last-interval (nth last-interval-index top-level-math-intervals))
-	       (begin-pos
-	        (car first-interval))
-	       (end-pos (cdr last-interval)))
+	              (last-interval-index (cdr first-visible-chunk))
+	              (first-interval (nth first-interval-index top-level-math-intervals))
+	              (last-interval (nth last-interval-index top-level-math-intervals))
+	              (begin-pos
+	               (car first-interval))
+	              (end-pos (cdr last-interval)))
           (when czm-preview--debug
             (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
-	  (cons begin-pos end-pos))))))
+	         (cons begin-pos end-pos))))))
 
 (defun czm-preview--first-stale-chunk (beg end)
   "Get convex hull of initial stale envs between BEG and END.
@@ -1318,8 +1322,12 @@ smallest interval that contains this group."
     (message "czm-preview--preview-some-chunk"))
   (unless (czm-preview--processes)
     (let*
-	((above-window-beg (max (point-min) (- (point) czm-preview-characters-above-to-preview)))
-         (below-window-end (min (point-max) (+ (point) czm-preview-characters-below-to-preview)))
+	       ((above-window-beg (max (point-min)
+                                (- (point)
+                                   czm-preview-characters-above-to-preview)))
+         (below-window-end (min (point-max)
+                                (+ (point)
+                                   czm-preview-characters-below-to-preview)))
          (action
           (lambda (interval)
             (let ((inhibit-message t)
@@ -1349,18 +1357,20 @@ smallest interval that contains this group."
         (cond
          ((setq interval (czm-preview--last-stale-chunk
                           (max begin-document above-window-beg)
-			  (point)))
+			                       (point)))
           (when czm-preview--debug
             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
-	  (funcall action interval))
+	         (funcall action interval))
          ((setq interval (czm-preview--first-stale-chunk
                           (max begin-document (point))
                           below-window-end))
           (when czm-preview--debug
-            (message "point: %s, below-window-end: %s" (point) below-window-end))
-	  (funcall action interval))
+            (message "point: %s, below-window-end: %s" (point)
+                     below-window-end))
+	         (funcall action interval))
          ((and
-           (> (point) begin-document)
+           (> (point)
+              begin-document)
            (texmathp)
            (let ((why (car texmathp-why))
                  (beg (cdr texmathp-why)))
@@ -1369,7 +1379,8 @@ smallest interval that contains this group."
                (when-let* ((bound (save-excursion
                                     (if (re-search-forward
                                          "[\n\r][ \t]*[\n\r]"
-                                         (point-max) t)
+                                         (point-max)
+                                         t)
                                         (match-beginning 0)
                                       (point-max))))
                            (end (cdr (save-excursion
@@ -1400,7 +1411,8 @@ Check that we are not visiting a bbl file."
   ;; seconds old, delete and remove from list
   (let (newlist)
     (dolist (filename czm-preview--internal-tmp-files)
-      (when (> (- (float-time) (float-time (nth 5 (file-attributes filename))))
+      (when (> (- (float-time)
+                  (float-time (nth 5 (file-attributes filename))))
                10)
         (delete-file filename))
       (unless (file-exists-p filename)
@@ -1418,7 +1430,8 @@ Check that we are not visiting a bbl file."
    ;; font-lock-set-defaults ;; This is key.
    czm-preview--keepalive
    (or (not czm-preview--region-time)
-       (> (float-time) (+ czm-preview--region-time 0.25)))
+       (> (float-time)
+          (+ czm-preview--region-time 0.25)))
    ;; (not czm-preview--active-region)
    (czm-preview--preview-some-chunk)))
 
