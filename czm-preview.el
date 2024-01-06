@@ -1142,6 +1142,12 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
             (throw 'found
               (cons inner-end end))))))))
 
+
+(defcustom czm-preview-predicate nil
+  "Predicate that determines whether to auto-preview at point."
+  :type 'function
+  :group 'czm-preview)
+
 (defun czm-preview--find-next-math-block (&optional bound)
   "Find next LaTeX math block before BOUND."
   (interactive)
@@ -1159,6 +1165,8 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
             (match (match-string 0)))
         (when (and (not (TeX-in-comment))
                    (texmathp)
+                   (or (null czm-preview-predicate)
+                       (funcall czm-preview-predicate))
                    ;; (not (LaTeX-verbatim-p))
                    (or (null env-name)
                        (member env-name texmathp-environments)))
