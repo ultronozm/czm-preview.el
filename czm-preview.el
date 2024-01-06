@@ -430,16 +430,16 @@ END and the current time) in buffer-local variables.  TODO: why?"
 			     preview-LaTeX-command-replacements)))
 
 (defcustom czm-preview-allowed-files
+  '("\\.tex\\(<\\([^>]+\\)>\\)*$"
+    "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$"
+    "\\.lean$"
+    )
   "Determine which non-tex files can be previewed.
 List of regexps or functions.  The regexps are called with
 string-match-p.  The functions are called with the file name as
 argument and should return non-nil if the file should have
 previews generated.  See the corresponding part of the source
 code of `czm-preview-override-parse-messages' for details."
-  '("\\.tex\\(<\\([^>]+\\)>\\)*$"
-    "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$"
-    "\\.lean$"
-    )
   :type '(repeat (choice regexp function))
   :group 'czm-preview)
 
