@@ -244,7 +244,7 @@ source).  TODO: explain why"
 
          ;; We search for the header from the master file, if it is
          ;; not present in the region.
-         (header (if (string-match header-end region)
+         (header (if (and header-end (string-match header-end region))
                      ""
                    (save-excursion
                      (save-restriction
@@ -265,7 +265,7 @@ source).  TODO: explain why"
          ;; We search for the trailer from the master file, if it is
          ;; not present in the region.
          (trailer-offset 0)
-         (trailer (if (string-match trailer-start region)
+         (trailer (if (and trailer-start (string-match trailer-start region))
                       ""
                     (save-excursion
                       (save-restriction
