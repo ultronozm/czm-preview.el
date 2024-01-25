@@ -5,7 +5,7 @@
 ;; Author: Paul D. Nelson <nelson.paul.david@gmail.com>
 ;; Version: 0.0
 ;; URL: https://github.com/ultronozm/czm-preview.el
-;; Package-Requires: ((emacs "29.1") (auctex "11.86.1") (czm-tex-util "0.0"))
+;; Package-Requires: ((emacs "29.1") (czm-tex-util "0.0"))
 ;; Keywords: tex, wp, convenience
 
 ;; This program is free software; you can redistribute it and/or modify
@@ -366,17 +366,6 @@ into STR as tags."
       (buffer-substring-no-properties (point-min)
                                       (point-max)))))
 
-(defun czm/tmp-delete-blank-lines-in-buffer ()
-  (interactive)
-  (goto-char (point-min))
-  ;; delete blank lines in buffer, making sure to delete newlines as we go
-  (while (re-search-forward "^\\s-*$" nil t)
-    (replace-match "" nil nil)
-    (delete-char 1))
-  )
-
-
-
 (defun czm-preview-override-region (begin end)
   "Run preview on region between BEGIN and END.
 
@@ -432,11 +421,10 @@ END and the current time) in buffer-local variables.  TODO: why?"
 (defcustom czm-preview-allowed-files
   '("\\.tex\\(<\\([^>]+\\)>\\)*$"
     "\\[ latex \\]\\*\\(<\\([^>]+\\)>\\)*$"
-    "\\.lean$"
-    )
+    "\\.lean$")
   "Determine which non-tex files can be previewed.
 List of regexps or functions.  The regexps are called with
-string-match-p.  The functions are called with the file name as
+`string-match-p'.  The functions are called with the file name as
 argument and should return non-nil if the file should have
 previews generated.  See the corresponding part of the source
 code of `czm-preview-override-parse-messages' for details."
@@ -454,7 +442,7 @@ stuff for the placement hook.
 OVERRIDE DIFFERENCES: see the comments labelled OVERRIDE
 DIFFERENCE in the body of the function for details.  In short:
 
-1. We add support for indirect buffers and org-mode source
+1. We add support for indirect buffers and `org-mode' source
 blocks.  This requires our modifications to `preview-region'.
 
 2. We fix a subtle bug that shows up when `preview-region' is
@@ -1279,10 +1267,8 @@ determines whether to take from the beginning or the end."
 		                     top-level-math-intervals regions))
            (_line-numbers        ; only for stuff occuring on one line
             (mapcar (lambda (interval)
-		                    (let ((line-beg (line-number-at-pos (car interval)
-                                                          ))
-		                          (line-end (line-number-at-pos (cdr interval)
-                                                          )))
+		                    (let ((line-beg (line-number-at-pos (car interval)))
+		                          (line-end (line-number-at-pos (cdr interval))))
 		                      (when (equal line-beg line-end)
 		                        line-beg)))
 	                   top-level-math-intervals)))
@@ -1497,8 +1483,8 @@ Check that we are not visiting a bbl file."
 
       (unless (buffer-file-name)
         (unless czm-preview-TeX-master
-          (user-error "czm-preview-mode can only be activated in file buffers, unless
-you point `czm-preview-TeX-master' to a file -- see the README"))
+          (user-error "Mode czm-preview-mode can be activated only in file buffers,
+unless you point `czm-preview-TeX-master' to a file -- see the README"))
         (unless (file-exists-p czm-preview-TeX-master)
           (user-error
            (format "czm-preview-TeX-master (%s) does not exist" czm-preview-TeX-master))))
