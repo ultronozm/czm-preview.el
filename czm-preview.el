@@ -383,24 +383,24 @@ END and the current time) in buffer-local variables.  TODO: why?"
   (when czm-preview--debug
     (message "Region: %s %s" begin end))
   (let ((TeX-region-extra
-	 ;; Write out counter information to region.
-	 (concat (preview--counter-information begin)
-		 TeX-region-extra)))
+	        ;; Write out counter information to region.
+	        (concat (preview--counter-information begin)
+		               TeX-region-extra)))
     (TeX-region-create (TeX-region-file TeX-default-extension)
-		       (czm-preview--preprocess
-			(buffer-substring-no-properties begin end))
-		       (buffer-name)
-		       ;; (or
-		       ;; 	(and buffer-file-name
-		       ;; 	     (file-name-nondirectory buffer-file-name))
-		       ;; 	(and (buffer-base-buffer)
-		       ;; 	     (buffer-file-name (buffer-base-buffer))
-		       ;; 	     (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
-		       ;; 	"<none>")
-		       ;; (if buffer-file-name
-		       ;; 	   (file-name-nondirectory buffer-file-name)
-		       ;; 	 "<none>")
-		       (TeX-current-offset begin)))
+		                     (czm-preview--preprocess
+			                     (buffer-substring-no-properties begin end))
+		                     (buffer-name)
+		                     ;; (or
+		                     ;; 	(and buffer-file-name
+		                     ;; 	     (file-name-nondirectory buffer-file-name))
+		                     ;; 	(and (buffer-base-buffer)
+		                     ;; 	     (buffer-file-name (buffer-base-buffer))
+		                     ;; 	     (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
+		                     ;; 	"<none>")
+		                     ;; (if buffer-file-name
+		                     ;; 	   (file-name-nondirectory buffer-file-name)
+		                     ;; 	 "<none>")
+		                     (TeX-current-offset begin)))
   (setq TeX-current-process-region-p t)
   (setq-local czm-preview--region-begin begin)
   (setq-local czm-preview--region-end end)
@@ -413,10 +413,10 @@ END and the current time) in buffer-local variables.  TODO: why?"
     (insert (format "%s %s\n\n" begin end)))
 
   (preview-generate-preview (TeX-region-file)
-			    (preview-do-replacements
-			     (TeX-command-expand
-			      (preview-string-expand preview-LaTeX-command))
-			     preview-LaTeX-command-replacements)))
+			                         (preview-do-replacements
+			                          (TeX-command-expand
+			                           (preview-string-expand preview-LaTeX-command))
+			                          preview-LaTeX-command-replacements)))
 
 (defcustom czm-preview-allowed-files
   '("\\.tex\\(<\\([^>]+\\)>\\)*$"
