@@ -43,7 +43,7 @@
 ;;
 ;; in a LaTeX-mode buffer visiting a file.  For indirect and non-file
 ;; buffers, first customize as described above, e.g., by including
-;; 
+;;
 ;;   (setq czm-preview-TeX-master "path/to/master.tex")
 ;;
 ;; in your init file.
@@ -284,7 +284,7 @@ source).  TODO: explain why"
                               (buffer-substring-no-properties
                                (point) (point-max))))))))))
     ;; file name should be relative to master
-    
+
     ;; ---------------------------------------------------------------------
     ;; The only change is that we comment out the following three lines.
     ;; ---------------------------------------------------------------------
@@ -347,17 +347,17 @@ into STR as tags."
       ;; (latex-mode)
       (goto-char (point-min))
       (while (re-search-forward "\\\\label{\\([^}]+\\)}" nil t)
-	       (let ((label (match-string 1)))
-	         (when-let ((number
-		                    (with-current-buffer buf
-			                     (czm-tex-util-get-label-number label))))
-	           (when
+        (let ((label (match-string 1)))
+          (when-let ((number
+                      (with-current-buffer buf
+                        (czm-tex-util-get-label-number label))))
+            (when
                                         ; hack - texmathp expects to be run in LaTeX-mode
                 (let ((comment-start-skip
                        "\\(\\(^\\|[^\\
-]\\)\\(\\\\\\\\\\)*\\)\\(%+[ 	]*\\)"))
+]\\)\\(\\\\\\\\\\)*\\)\\(%+[  ]*\\)"))
                   (texmathp))
-	             (insert (format "\\tag{%s}" number))))))
+              (insert (format "\\tag{%s}" number))))))
       (goto-char (point-min))
       ;; delete blank lines
       ;; (while (re-search-forward "^\\s-*$" nil t)
@@ -383,24 +383,24 @@ END and the current time) in buffer-local variables.  TODO: why?"
   (when czm-preview--debug
     (message "Region: %s %s" begin end))
   (let ((TeX-region-extra
-	        ;; Write out counter information to region.
-	        (concat (preview--counter-information begin)
-		               TeX-region-extra)))
+         ;; Write out counter information to region.
+         (concat (preview--counter-information begin)
+                 TeX-region-extra)))
     (TeX-region-create (TeX-region-file TeX-default-extension)
-		                     (czm-preview--preprocess
-			                     (buffer-substring-no-properties begin end))
-		                     (buffer-name)
-		                     ;; (or
-		                     ;; 	(and buffer-file-name
-		                     ;; 	     (file-name-nondirectory buffer-file-name))
-		                     ;; 	(and (buffer-base-buffer)
-		                     ;; 	     (buffer-file-name (buffer-base-buffer))
-		                     ;; 	     (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
-		                     ;; 	"<none>")
-		                     ;; (if buffer-file-name
-		                     ;; 	   (file-name-nondirectory buffer-file-name)
-		                     ;; 	 "<none>")
-		                     (TeX-current-offset begin)))
+                       (czm-preview--preprocess
+                        (buffer-substring-no-properties begin end))
+                       (buffer-name)
+                       ;; (or
+                       ;;  (and buffer-file-name
+                       ;;       (file-name-nondirectory buffer-file-name))
+                       ;;  (and (buffer-base-buffer)
+                       ;;       (buffer-file-name (buffer-base-buffer))
+                       ;;       (file-name-nondirectory (buffer-file-name (buffer-base-buffer))))
+                       ;;  "<none>")
+                       ;; (if buffer-file-name
+                       ;;     (file-name-nondirectory buffer-file-name)
+                       ;;   "<none>")
+                       (TeX-current-offset begin)))
   (setq TeX-current-process-region-p t)
   (setq-local czm-preview--region-begin begin)
   (setq-local czm-preview--region-end end)
@@ -413,10 +413,10 @@ END and the current time) in buffer-local variables.  TODO: why?"
     (insert (format "%s %s\n\n" begin end)))
 
   (preview-generate-preview (TeX-region-file)
-			                         (preview-do-replacements
-			                          (TeX-command-expand
-			                           (preview-string-expand preview-LaTeX-command))
-			                          preview-LaTeX-command-replacements)))
+                            (preview-do-replacements
+                             (TeX-command-expand
+                              (preview-string-expand preview-LaTeX-command))
+                             preview-LaTeX-command-replacements)))
 
 (defcustom czm-preview-allowed-files
   '("\\.tex\\(<\\([^>]+\\)>\\)*$"
@@ -450,27 +450,27 @@ called in slightly unusual circumstances.  For details, see
 https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html."
   (with-temp-message nil
     (let (TeX-error-file TeX-error-offset snippet box counters
-			                      file line
-			                      (lsnippet 0)
+                         file line
+                         (lsnippet 0)
                          lstart (lfile "")
                          lline lbuffer lpoint
-			                      lcounters
-			                      string after-string
-			                      offset
-			                      parsestate (case-fold-search nil)
-			                      (run-buffer (current-buffer))
-			                      (_run-directory default-directory)
-			                      tempdir
-			                      close-data
-			                      open-data
-			                      fast-hook
-			                      slow-hook
-			                      TeX-translate-location-file
-			                      TeX-translate-location-line
-			                      TeX-translate-location-error
-			                      TeX-translate-location-offset
-			                      TeX-translate-location-context
-			                      TeX-translate-location-string)
+                         lcounters
+                         string after-string
+                         offset
+                         parsestate (case-fold-search nil)
+                         (run-buffer (current-buffer))
+                         (_run-directory default-directory)
+                         tempdir
+                         close-data
+                         open-data
+                         fast-hook
+                         slow-hook
+                         TeX-translate-location-file
+                         TeX-translate-location-line
+                         TeX-translate-location-error
+                         TeX-translate-location-offset
+                         TeX-translate-location-context
+                         TeX-translate-location-string)
       ;; clear parsing variables
       (dolist (var preview-parse-variables)
         (set (nth 1 var)
@@ -703,9 +703,9 @@ name(\\([^)]+\\))\\)\\|\
                    ;; TODO: document the next bit.
                    (let ((buffer (or (get-buffer (file-name-nondirectory file))
                                      (find-buffer-visiting file))))
-		                   (when buffer
-		                     (set-buffer buffer)))
-		                 (setq lfile file))
+                     (when buffer
+                       (set-buffer buffer)))
+                   (setq lfile file))
                  (save-excursion
                    (let ((point-current (point)))
                      (save-restriction
@@ -744,11 +744,11 @@ name(\\([^)]+\\))\\)\\|\
                          ;; OVERRIDE DIFFERENCE: We insert the following
                          ;; block, which fixes a subtle bug; see
                          ;; https://www.mail-archive.com/bug-auctex@gnu.org/msg04327.html
-		                       (and
+                         (and
                           czm-preview--region-begin
-		                        (< (point)
+                          (< (point)
                              czm-preview--region-begin)
-		                        (goto-char czm-preview--region-begin))
+                          (goto-char czm-preview--region-begin))
                          (cond
                            ((search-forward (concat string after-string)
                                             (line-end-position)
@@ -853,8 +853,8 @@ allow us to work with previews in indirect buffers."
   (with-current-buffer (or buf (current-buffer))
     (unless (buffer-base-buffer)    ; do not clearout indirect buffers
       (save-restriction
-	(widen)
-	(preview-clearout (point-min) (point-max) (visited-file-modtime))))))
+ (widen)
+ (preview-clearout (point-min) (point-max) (visited-file-modtime))))))
 
 (defun czm-preview--valid-environment-start ()
   "Return start of current equation-like environment.
@@ -888,13 +888,13 @@ its argument."
     ;; environment coincides with the start of the active environment?
     (when czm-preview--active-environment-start
       (save-excursion
-	(beginning-of-line)
-	(when-let ((env-start (czm-preview--valid-environment-start)))
-	  (when (eq env-start czm-preview--active-environment-start)
-	    (preview-clearout start end tempdir)
-	    (setq czm-preview--active-environment-start nil)
-	    (setq start env-start)
-	    (setq end env-start)))))
+ (beginning-of-line)
+ (when-let ((env-start (czm-preview--valid-environment-start)))
+   (when (eq env-start czm-preview--active-environment-start)
+     (preview-clearout start end tempdir)
+     (setq czm-preview--active-environment-start nil)
+     (setq start env-start)
+     (setq end env-start)))))
     (apply orig-func (list snippet start end box counters tempdir place-opts))))
 
 
@@ -1055,16 +1055,16 @@ BEG is the start of the modified region, END is the end of the
     ;; If a region is currently being previewed...
     (when-let ((active-region-end (cdr czm-preview--active-region)))
       (with-current-buffer (get-buffer-create "*DebugPreview*")
-	(goto-char (point-max))
-	(insert (format-time-string "%Y-%m-%d %T.%3N\n"))
-	(insert (format "region being modified: (%s %s)\n" beg end))
-	(insert (format "active preview region: (%s %s)\n"
-			(car czm-preview--active-region)
-			(cdr czm-preview--active-region))))
+ (goto-char (point-max))
+ (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
+ (insert (format "region being modified: (%s %s)\n" beg end))
+ (insert (format "active preview region: (%s %s)\n"
+   (car czm-preview--active-region)
+   (cdr czm-preview--active-region))))
       ;; ...and the edit occurs before that region, then cancel the
       ;; preview.
       (when (< beg active-region-end)
-	(ignore-errors (TeX-kill-job))))))
+ (ignore-errors (TeX-kill-job))))))
 
 (defun czm-preview--post-command-function ()
   "Function called after each command in `czm-preview-mode'.
@@ -1082,7 +1082,7 @@ whatsoever with point inside that region, then kill the preview."
    ;; mean, why not just always position the preview at the start
    ;; of the environment?
    (not (eq czm-preview--active-environment-start
-	    (car czm-preview--active-region)))
+     (car czm-preview--active-region)))
    (texmathp)
    (<= (car czm-preview--active-region) (point))
    (< (point) (cdr czm-preview--active-region))
@@ -1190,17 +1190,17 @@ Return list of cons cells containing beg and end positions."
           ;; check that contents are non-empty
           (when (string-match-p "[^[:space:]\n\r]"
                                 (buffer-substring-no-properties
-				 inner-begin inner-end))
-	    (push (cons begin end) math-intervals))))
+     inner-begin inner-end))
+     (push (cons begin end) math-intervals))))
       (nreverse math-intervals))))
 
 (defun czm-preview--active-or-inactive-preview-at-point-p (&optional pos)
   "Is there a non-disabled preview overlay at POS?
 POS defaults to (point)."
   (cl-intersection (mapcar
-		    (lambda (ov) (overlay-get ov 'preview-state))
-		    (overlays-at (or pos (point))))
-		   '(active inactive)))
+      (lambda (ov) (overlay-get ov 'preview-state))
+      (overlays-at (or pos (point))))
+     '(active inactive)))
 
 (defun czm-preview--non-nil-intervals (input-list)
   "Return list of intervals of non-nil values in INPUT-LIST."
@@ -1242,15 +1242,15 @@ determines whether to take from the beginning or the end."
     (let* ((top-level-math-intervals
             (czm-preview--find-top-level-math-intervals beg end))
            (regions
-	           (mapcar (lambda (interval)
-		                    (buffer-substring-no-properties
-		                     (car interval)
+            (mapcar (lambda (interval)
+                      (buffer-substring-no-properties
+                       (car interval)
                        (cdr interval)))
-		                  top-level-math-intervals))
+                    top-level-math-intervals))
            (staleness
             (cl-mapcar (lambda (interval region)
-		                       (and
-		                        (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
+                         (and
+                          (not (czm-preview--active-or-inactive-preview-at-point-p (car interval)))
                           (not
                            (cond
                             ((stringp czm-preview-regions-not-to-preview)
@@ -1262,31 +1262,31 @@ determines whether to take from the beginning or the end."
                              (funcall czm-preview-regions-not-to-preview region))
                             (t t)))
                           ;; (not (string-match-p (regexp-opt '("<++>" "<+++>"))
-		                        ;; 	             region))
-		                        ))
-		                     top-level-math-intervals regions))
+                          ;;               region))
+                          ))
+                       top-level-math-intervals regions))
            (_line-numbers        ; only for stuff occuring on one line
             (mapcar (lambda (interval)
-		                    (let ((line-beg (line-number-at-pos (car interval)))
-		                          (line-end (line-number-at-pos (cdr interval))))
-		                      (when (equal line-beg line-end)
-		                        line-beg)))
-	                   top-level-math-intervals)))
+                      (let ((line-beg (line-number-at-pos (car interval)))
+                            (line-end (line-number-at-pos (cdr interval))))
+                        (when (equal line-beg line-end)
+                          line-beg)))
+                    top-level-math-intervals)))
       (when-let* ((non-nil-intervals (czm-preview--non-nil-intervals staleness))
                   (first-visible-chunk
                    (if first
                        (car non-nil-intervals)
                      (car (last non-nil-intervals)))))
         (let* ((first-interval-index (car first-visible-chunk))
-	              (last-interval-index (cdr first-visible-chunk))
-	              (first-interval (nth first-interval-index top-level-math-intervals))
-	              (last-interval (nth last-interval-index top-level-math-intervals))
-	              (begin-pos
-	               (car first-interval))
-	              (end-pos (cdr last-interval)))
+               (last-interval-index (cdr first-visible-chunk))
+               (first-interval (nth first-interval-index top-level-math-intervals))
+               (last-interval (nth last-interval-index top-level-math-intervals))
+               (begin-pos
+                (car first-interval))
+               (end-pos (cdr last-interval)))
           (when czm-preview--debug
             (message "begin-pos: %s, end-pos: %s" begin-pos end-pos))
-	         (cons begin-pos end-pos))))))
+          (cons begin-pos end-pos))))))
 
 (defun czm-preview--first-stale-chunk (beg end)
   "Get convex hull of initial stale envs between BEG and END.
@@ -1309,7 +1309,7 @@ smallest interval that contains this group."
     (message "czm-preview--preview-some-chunk"))
   (unless (czm-preview--processes)
     (let*
-	       ((above-window-beg (max (point-min)
+        ((above-window-beg (max (point-min)
                                 (- (point)
                                    czm-preview-characters-above-to-preview)))
          (below-window-end (min (point-max)
@@ -1344,17 +1344,17 @@ smallest interval that contains this group."
         (cond
          ((setq interval (czm-preview--last-stale-chunk
                           (max begin-document above-window-beg)
-			                       (point)))
+                          (point)))
           (when czm-preview--debug
             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
-	         (funcall action interval))
+          (funcall action interval))
          ((setq interval (czm-preview--first-stale-chunk
                           (max begin-document (point))
                           below-window-end))
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point)
                      below-window-end))
-	         (funcall action interval))
+          (funcall action interval))
          ((and
            (> (point)
               begin-document)
@@ -1465,7 +1465,14 @@ Check that we are not visiting a bbl file."
   (setq czm-preview--timer
         (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
 
+(defun czm-preview--TeX-master-watcher (sym val op where)
+  "Watch for changes to `czm-preview-TeX-master'."
+  (when (and (eq op 'set)
+             czm-preview-mode)
+    (setq TeX-master val)))
+
 ;;; --------------------------------- COMMANDS ---------------------------------
+
 
 
 
@@ -1477,41 +1484,42 @@ Check that we are not visiting a bbl file."
   :global nil
   :group 'czm-preview
   (if czm-preview-mode
-    (progn
-      ;; TODO: is there some way to get these checks to "abort" the
-      ;; activation of the mode?
+      (progn
+        ;; TODO: is there some way to get these checks to "abort" the
+        ;; activation of the mode?
 
-      (unless (buffer-file-name)
-        (unless czm-preview-TeX-master
-          (user-error "Mode czm-preview-mode can be activated only in file buffers,
+        (unless (buffer-file-name)
+          (unless czm-preview-TeX-master
+            (user-error "Mode czm-preview-mode can be activated only in file buffers,
 unless you point `czm-preview-TeX-master' to a file -- see the README"))
-        (unless (file-exists-p czm-preview-TeX-master)
-          (user-error
-           (format "czm-preview-TeX-master (%s) does not exist" czm-preview-TeX-master))))
+          (unless (file-exists-p czm-preview-TeX-master)
+            (user-error
+             (format "czm-preview-TeX-master (%s) does not exist" czm-preview-TeX-master))))
 
-      (czm-preview--init)
-      
-      (czm-preview--reset-timer)
-      (setq-local czm-preview--timer-enabled t)
-      
-      (setq-local czm-preview--keepalive t)
-      
-      (setq-local czm-preview--TeX-master-orig TeX-master)
-      (when czm-preview-TeX-master
-        (setq-local TeX-master czm-preview-TeX-master))
-      (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
-      (setq-local preview-auto-cache-preamble t)
+        (czm-preview--init)
 
-      (add-hook 'kill-emacs-hook
-                (lambda ()
-                  (dolist (file czm-preview--internal-tmp-files)
-                    (ignore-errors (delete-file file))))))
-    
+        (czm-preview--reset-timer)
+        (setq-local czm-preview--timer-enabled t)
+
+        (setq-local czm-preview--keepalive t)
+
+        (setq-local czm-preview--TeX-master-orig TeX-master)
+        (when czm-preview-TeX-master
+          (setq-local TeX-master czm-preview-TeX-master))
+        (add-variable-watcher 'czm-preview-TeX-master #'czm-preview--TeX-master-watcher)
+        (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
+        (setq-local preview-auto-cache-preamble t)
+
+        (add-hook 'kill-emacs-hook
+                  (lambda ()
+                    (dolist (file czm-preview--internal-tmp-files)
+                      (ignore-errors (delete-file file))))))
+
     ;; Disable the timer.
     (setq-local czm-preview--timer-enabled nil)
     ;; Hacky:
     (setq-local czm-preview--active-region nil)
-    
+
 
     ;; I think the hooks add a benefit anyway, right?  Maybe just want a separate function
     (czm-preview--close)
@@ -1529,13 +1537,13 @@ unless you point `czm-preview-TeX-master' to a file -- see the README"))
 Display message in the minibuffer indicating old and new value."
   (interactive)
   (message "TeX-master: %s -> %s"
-	   TeX-master
-	   (if (equal TeX-master czm-preview-TeX-master)
-	       (progn
-		 (TeX-PDF-mode 1)
-		 (setq TeX-master t))
-	     (TeX-PDF-mode 0)
-	     (setq TeX-master czm-preview-TeX-master))))
+    TeX-master
+    (if (equal TeX-master czm-preview-TeX-master)
+        (progn
+   (TeX-PDF-mode 1)
+   (setq TeX-master t))
+      (TeX-PDF-mode 0)
+      (setq TeX-master czm-preview-TeX-master))))
 
 ;; (defun my-preview-TeX-master-advice (orig-fun file command)
 ;;   "Temporarily set the value of `TeX-master' to `preview-TeX-master' for AUCTeX preview."
