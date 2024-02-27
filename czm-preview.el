@@ -1465,12 +1465,6 @@ Check that we are not visiting a bbl file."
   (setq czm-preview--timer
         (run-with-timer czm-preview-timer-interval czm-preview-timer-interval #'czm-preview--timer-function)))
 
-(defun czm-preview--TeX-master-watcher (sym val op where)
-  "Watch for changes to `czm-preview-TeX-master'."
-  (when (and (eq op 'set)
-             czm-preview-mode)
-    (setq TeX-master val)))
-
 ;;; --------------------------------- COMMANDS ---------------------------------
 
 
@@ -1528,6 +1522,12 @@ unless you point `czm-preview-TeX-master' to a file -- see the README"))
     (setq-local preview-auto-cache-preamble czm-preview--preview-auto-cache-preamble-orig)))
 
 
+(defun czm-preview--TeX-master-watcher (_sym val op _where)
+  "Watch for changes to `czm-preview-TeX-master'."
+  (when (and (eq op 'set)
+             czm-preview-mode)
+    (setq TeX-master val)))
+
 
 ;; TODO: sort the rest of this stuff out.
 
@@ -1537,13 +1537,13 @@ unless you point `czm-preview-TeX-master' to a file -- see the README"))
 Display message in the minibuffer indicating old and new value."
   (interactive)
   (message "TeX-master: %s -> %s"
-    TeX-master
-    (if (equal TeX-master czm-preview-TeX-master)
-        (progn
-   (TeX-PDF-mode 1)
-   (setq TeX-master t))
-      (TeX-PDF-mode 0)
-      (setq TeX-master czm-preview-TeX-master))))
+           TeX-master
+           (if (equal TeX-master czm-preview-TeX-master)
+               (progn
+                 (TeX-PDF-mode 1)
+                 (setq TeX-master t))
+             (TeX-PDF-mode 0)
+             (setq TeX-master czm-preview-TeX-master))))
 
 ;; (defun my-preview-TeX-master-advice (orig-fun file command)
 ;;   "Temporarily set the value of `TeX-master' to `preview-TeX-master' for AUCTeX preview."
