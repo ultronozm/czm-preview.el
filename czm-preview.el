@@ -355,7 +355,7 @@ into STR as tags."
                                         ; hack - texmathp expects to be run in LaTeX-mode
                 (let ((comment-start-skip
                        "\\(\\(^\\|[^\\
-]\\)\\(\\\\\\\\\\)*\\)\\(%+[  ]*\\)"))
+]\\)\\(\\\\\\\\\\)*\\)\\(%+[ 	]*\\)"))
                   (texmathp))
               (insert (format "\\tag{%s}" number))))))
       (goto-char (point-min))
