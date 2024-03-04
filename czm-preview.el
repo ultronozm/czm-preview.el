@@ -1407,12 +1407,13 @@ Check that we are not visiting a bbl file."
     (setq czm-preview--internal-tmp-files newlist))
 
   (and
-   (eq major-mode 'latex-mode)
+   (or (eq major-mode 'LaTeX-mode) (eq major-mode 'latex-mode))
    ;; file extension is not
    czm-preview-enable-automatic-previews
    czm-preview--timer
    czm-preview--timer-enabled
-   TeX-style-hook-applied-p
+   (or TeX-style-hook-applied-p ;; doesn't seem to be set in later versions of AUCTeX
+       (>= (string-to-number AUCTeX-version) 14))
    ;; czm-preview--style-hooks-applied
    ;; font-lock-set-defaults ;; This is key.
    czm-preview--keepalive
