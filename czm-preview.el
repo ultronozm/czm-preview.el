@@ -1503,6 +1503,11 @@ unless you point `czm-preview-TeX-master' to a file -- see the README"))
           (setq-local TeX-master czm-preview-TeX-master))
         (add-variable-watcher 'czm-preview-TeX-master #'czm-preview--TeX-master-watcher)
         (setq-local czm-preview--preview-auto-cache-preamble-orig preview-auto-cache-preamble)
+
+        (unless (or (eq major-mode 'LaTeX-mode) (eq major-mode 'latex-mode))
+          (setq TeX-header-end LaTeX-header-end
+                TeX-trailer-start LaTeX-trailer-start))
+
         (setq-local preview-auto-cache-preamble t)
 
         (add-hook 'kill-emacs-hook
