@@ -1561,6 +1561,23 @@ Display message in the minibuffer indicating old and new value."
 
 ;; profiling: (let ((time (current-time))) (czm-preview--preview-some-chunk) (let ((time2 (current-time))) (message "time: %s msec" (* 1000 (float-time (time-subtract time2 time))))))
 
+(defun czm-preview-current-org-src-block ()
+  "Preview and fold the current org-mode source block.
+This function should be used in an org-mode buffer with the point
+in a latex source block, (delimited by \"#+begin_src latex\" and
+\"#+end_src\", for instance)."
+  (interactive)
+  (czm-preview-mode 1)
+  (setq TeX-header-end LaTeX-header-end
+        TeX-trailer-start LaTeX-trailer-start)
+  (setq-local preview-tailor-local-multiplier 0.5)
+  (save-excursion
+    (org-babel-mark-block)
+    (unless TeX-fold-mode
+      (TeX-fold-mode))
+    (TeX-fold-region (region-beginning) (region-end))
+    (preview-region (region-beginning) (region-end))))
+
 ;;; ------------------------------ THE END ------------------------------
 
 (provide 'czm-preview)
