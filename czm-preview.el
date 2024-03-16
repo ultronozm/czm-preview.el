@@ -395,9 +395,9 @@ END and the current time) in buffer-local variables.  TODO: why?"
     (TeX-region-create (TeX-region-file TeX-default-extension)
                        (let ((str (buffer-substring-no-properties begin end)))
                          (if czm-preview--region-preprocess-function
-                             (funcall #'czm-preview--region-preprocess-function str)
+                             (funcall czm-preview--region-preprocess-function str)
                            str))
-                       (funcall #'czm-preview--region-original-argument-function)
+                       (funcall czm-preview--region-original-argument-function)
                        ;; (or
                        ;;  (and buffer-file-name
                        ;;       (file-name-nondirectory buffer-file-name))
@@ -1569,6 +1569,7 @@ Display message in the minibuffer indicating old and new value."
 
 ;; profiling: (let ((time (current-time))) (czm-preview--preview-some-chunk) (let ((time2 (current-time))) (message "time: %s msec" (* 1000 (float-time (time-subtract time2 time))))))
 
+;;;###autoload
 (defun czm-preview-region-anywhere (beg end)
   "Preview LaTeX math environments between BEG and END.
 This function is intended for use in buffers that are not running
@@ -1579,6 +1580,14 @@ AUCTeX."
         TeX-trailer-start LaTeX-trailer-start)
   (preview-region beg end))
 
+(defun czm-preview-fold-region-anywhere (beg end)
+  "Preview and fold LaTeX math environments between BEG and END."
+  (interactive "r")
+  (czm-preview-region-anywhere beg end)
+  (unless TeX-fold-mode
+    (TeX-fold-mode))
+  (TeX-fold-region beg end))
+
 (defun czm-preview-current-org-src-block ()
   "Preview and fold the current org-mode source block.
 This function should be used in an org-mode buffer with the point
@@ -1588,10 +1597,9 @@ in a latex source block, (delimited by \"#+begin_src latex\" and
   (setq-local preview-tailor-local-multiplier 0.5)
   (save-excursion
     (org-babel-mark-block)
-    (unless TeX-fold-mode
-      (TeX-fold-mode))
-    (TeX-fold-region (region-beginning) (region-end))
-    (czm-preview-region-anywhere (region-beginning) (region-end))))
+    (let ((beg (region-beginning))
+          (end (region-end)))
+      (czm-preview-fold-region-anywhere beg end))))
 
 ;;; ------------------------------ THE END ------------------------------
 
