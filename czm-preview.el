@@ -366,6 +366,12 @@ into STR as tags."
       (buffer-substring-no-properties (point-min)
                                       (point-max)))))
 
+(defvar czm-preview--region-preprocess-function #'czm-preview--preprocess
+  "Function to preprocess region before previewing.")
+
+(defvar czm-preview--region-original-argument-function #'buffer-name
+  "Function to get the `original' argument for `TeX-region-create'.")
+
 (defun czm-preview-override-region (begin end)
   "Run preview on region between BEGIN and END.
 
@@ -387,9 +393,11 @@ END and the current time) in buffer-local variables.  TODO: why?"
          (concat (preview--counter-information begin)
                  TeX-region-extra)))
     (TeX-region-create (TeX-region-file TeX-default-extension)
-                       (czm-preview--preprocess
-                        (buffer-substring-no-properties begin end))
-                       (buffer-name)
+                       (let ((str (buffer-substring-no-properties begin end)))
+                         (if czm-preview--region-preprocess-function
+                             (funcall #'czm-preview--region-preprocess-function str)
+                           str))
+                       (funcall #'czm-preview--region-original-argument-function)
                        ;; (or
                        ;;  (and buffer-file-name
                        ;;       (file-name-nondirectory buffer-file-name))
