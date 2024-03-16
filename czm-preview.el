@@ -1580,6 +1580,8 @@ AUCTeX."
         TeX-trailer-start LaTeX-trailer-start)
   (preview-region beg end))
 
+;; the following functions are experimental
+
 (defun czm-preview-fold-region-anywhere (beg end)
   "Preview and fold LaTeX math environments between BEG and END."
   (interactive "r")
