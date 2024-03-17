@@ -1585,10 +1585,10 @@ AUCTeX."
 (defun czm-preview-fold-region-anywhere (beg end)
   "Preview and fold LaTeX math environments between BEG and END."
   (interactive "r")
-  (czm-preview-region-anywhere beg end)
   (unless TeX-fold-mode
     (TeX-fold-mode))
-  (TeX-fold-region beg end))
+  (TeX-fold-region beg end)
+  (czm-preview-region-anywhere beg end))
 
 (defun czm-preview-current-org-src-block ()
   "Preview and fold the current org-mode source block.
