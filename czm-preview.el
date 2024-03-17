@@ -1059,20 +1059,21 @@ if so, kills the current preview job.
 
 BEG is the start of the modified region, END is the end of the
  region, and LENGTH is the length of the modification."
-  (when (eq major-mode 'latex-mode)
+  (when (or (eq major-mode 'latex-mode)
+            (eq major-mode 'LaTeX-mode))
     ;; If a region is currently being previewed...
     (when-let ((active-region-end (cdr czm-preview--active-region)))
       (with-current-buffer (get-buffer-create "*DebugPreview*")
- (goto-char (point-max))
- (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
- (insert (format "region being modified: (%s %s)\n" beg end))
- (insert (format "active preview region: (%s %s)\n"
-   (car czm-preview--active-region)
-   (cdr czm-preview--active-region))))
+        (goto-char (point-max))
+        (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
+        (insert (format "region being modified: (%s %s)\n" beg end))
+        (insert (format "active preview region: (%s %s)\n"
+                        (car czm-preview--active-region)
+                        (cdr czm-preview--active-region))))
       ;; ...and the edit occurs before that region, then cancel the
       ;; preview.
       (when (< beg active-region-end)
- (ignore-errors (TeX-kill-job))))))
+        (ignore-errors (TeX-kill-job))))))
 
 (defun czm-preview--post-command-function ()
   "Function called after each command in `czm-preview-mode'.
@@ -1082,7 +1083,8 @@ whatsoever with point inside that region, then kill the preview."
   (setq-local czm-preview--keepalive t)
   (and
    nil
-   (eq major-mode 'latex-mode)
+   (or (eq major-mode 'latex-mode)
+       (eq major-mode 'LaTeX-mode))
    ;; a region is currently being previewed
    czm-preview--active-region
    ;; it's not a "current environment" preview.  kinda hacky.
@@ -1090,7 +1092,7 @@ whatsoever with point inside that region, then kill the preview."
    ;; mean, why not just always position the preview at the start
    ;; of the environment?
    (not (eq czm-preview--active-environment-start
-     (car czm-preview--active-region)))
+            (car czm-preview--active-region)))
    (texmathp)
    (<= (car czm-preview--active-region) (point))
    (< (point) (cdr czm-preview--active-region))
