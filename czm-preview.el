@@ -1573,6 +1573,10 @@ Display message in the minibuffer indicating old and new value."
 
 ;; profiling: (let ((time (current-time))) (czm-preview--preview-some-chunk) (let ((time2 (current-time))) (message "time: %s msec" (* 1000 (float-time (time-subtract time2 time))))))
 
+
+
+;; the following functions are experimental
+
 ;;;###autoload
 (defun czm-preview-region-anywhere (beg end)
   "Preview LaTeX math environments between BEG and END.
@@ -1583,8 +1587,6 @@ AUCTeX."
   (setq TeX-header-end LaTeX-header-end
         TeX-trailer-start LaTeX-trailer-start)
   (preview-region beg end))
-
-;; the following functions are experimental
 
 (defun czm-preview-fold-region-anywhere (beg end)
   "Preview and fold LaTeX math environments between BEG and END."
