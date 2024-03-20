@@ -415,10 +415,11 @@ END and the current time) in buffer-local variables.  TODO: why?"
   (setq-local czm-preview--region-time (float-time))
   ;; (setq-local czm-preview--preview-region-already-run t)
   (setq czm-preview--active-region (cons begin end))
-  (with-current-buffer (get-buffer-create "*Debug Preview*")
-    (goto-char (point-max))
-    (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
-    (insert (format "%s %s\n\n" begin end)))
+  (when czm-preview--debug
+    (with-current-buffer (get-buffer-create "*DebugPreview*")
+      (goto-char (point-max))
+      (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
+      (insert (format "%s %s\n\n" begin end))))
 
   (preview-generate-preview (TeX-region-file)
                             (preview-do-replacements
@@ -1065,13 +1066,14 @@ BEG is the start of the modified region, END is the end of the
             (eq major-mode 'LaTeX-mode))
     ;; If a region is currently being previewed...
     (when-let ((active-region-end (cdr czm-preview--active-region)))
-      (with-current-buffer (get-buffer-create "*DebugPreview*")
-        (goto-char (point-max))
-        (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
-        (insert (format "region being modified: (%s %s)\n" beg end))
-        (insert (format "active preview region: (%s %s)\n"
-                        (car czm-preview--active-region)
-                        (cdr czm-preview--active-region))))
+      (when czm-preview--debug
+        (with-current-buffer (get-buffer-create "*DebugPreview*")
+          (goto-char (point-max))
+          (insert (format-time-string "%Y-%m-%d %T.%3N\n"))
+          (insert (format "region being modified: (%s %s)\n" beg end))
+          (insert (format "active preview region: (%s %s)\n"
+                          (car czm-preview--active-region)
+                          (cdr czm-preview--active-region)))))
       ;; ...and the edit occurs before that region, then cancel the
       ;; preview.
       (when (< beg active-region-end)
