@@ -66,7 +66,7 @@ To implement these refinements, use the following:
 #+end_src
 I've included my own "preview-master.tex" in the "tex" subfolder of this repository.  Feel free to make your own, or edit mine so that it contains whichever macros you use.  Then replace "~/doit/preview-master.tex" in the above with the appropriate path.
 
-The precise use-package declaration that I use (with elpaca) may be found in my [[https://github.com/ultronozm/emacsd/blob/main/init-latex.el][the LaTeX part of my config]].
+The precise use-package declaration that I use (with elpaca) may be found in [[https://github.com/ultronozm/emacsd/blob/main/init-latex.el][the LaTeX part of my config]].
 
 * Usage
 Visit a TeX file, with AUCTeX's =LaTeX-mode= as the major-mode.  Run =M-x czm-preview-mode= (unless you are using the refined setup described above, in which case this step is automatic).  If you've specified =czm-preview-TeX-master=, then the same should work in any =LaTeX-mode= buffer.
