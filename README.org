@@ -66,6 +66,8 @@ To implement these refinements, use the following:
 #+end_src
 I've included my own "preview-master.tex" in the "tex" subfolder of this repository.  Feel free to make your own, or edit mine so that it contains whichever macros you use.  Then replace "~/doit/preview-master.tex" in the above with the appropriate path.
 
+Note, for instance, that =\usepackage{tikzpicture}= is commented out in the supplied "preview-master.tex".  I've found that tikz slows down preview generation by a couple hundred milliseconds or so; I prefer the snappier feel, and only rarely have the need to preview tikzpictures.  If you're using the =czm-preview-TeX-master= approach and want tikzpictures enabled with the supplied "preview-master.tex", you should uncomment the =\usepackage{tikzpicture}= line.  Similar considerations apply to any other macros, of course.
+
 The precise use-package declaration that I use (with elpaca) may be found in [[https://github.com/ultronozm/emacsd/blob/main/init-latex.el][the LaTeX part of my config]].
 
 * Usage
