@@ -1,18 +1,36 @@
+% \pdfcompresslevel=0
+% \pdfobjcompresslevel=0
 \documentclass[reqno]{amsart}
+% \documentclass{article}
+
+\newcommand{\B}{\mathcal{B}} \newcommand{\loc}{\mathrm{loc}}
+\newcommand{\gen}{\mathrm{gen}} \newcommand{\aut}{\mathrm{aut}}
+\newcommand{\I}{\mathcal{I}}
 
 \renewcommand{\geq}{\geqslant} \renewcommand{\leq}{\leqslant}
 
+\renewcommand{\mod}{\mathrm{mod}\,} \newcommand{\D}{\mathcal{D}}
+
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+
+% replace the above with one usepackage declaration per item
 \usepackage{amsthm}
 \usepackage{amssymb}
 \usepackage{amscd}
-% \usepackage{stmaryrd}
+\usepackage{stmaryrd}
 % \usepackage{amsfonts}
 % \usepackage{minted}
 
 
 % \usepackage[all]{xy}
-% \usepackage{tikz}
+\usepackage{tikz}
 % \usetikzlibrary{matrix,arrows,decorations.pathmorphing}
+
+
+\newcommand{\mfq}{\mathfrak{q}}
+\newcommand{\mfp}{\mathfrak{p}}
+\newcommand{\mfop}{\mathfrak{l}}
 
 
 \makeatletter
@@ -333,10 +351,29 @@
 \PreviewEnvironment{tabular}
 \PreviewEnvironment{verbatim}
 \PreviewEnvironment{lstlisting}
+\PreviewEnvironment{frame}
 \PreviewEnvironment*{frame}
 \PreviewEnvironment*{alert}
 \PreviewEnvironment*{emph}
 \PreviewEnvironment*{textbf}
+
+\renewcommand\vec[1]{\overrightarrow{#1}}
+\newcommand\cev[1]{\overleftarrow{#1}}
+% \makeatletter
+% \DeclareRobustCommand{\cev}[1]{%
+% {\mathpalette\do@cev{#1}}%
+% }
+%   \newcommand{\do@cev}[2]{%
+%   \vbox{\offinterlineskip
+%   \sbox\z@{$\m@th#1 x$}%
+%   \ialign{##\cr
+%   \hidewidth\reflectbox{$\m@th#1\vec{}\mkern4mu$}\hidewidth\cr
+%   \noalign{\kern-\ht\z@}
+%   $\m@th#1#2$\cr
+% }%
+% }%
+% }
+%   \makeatother
 
 
 
