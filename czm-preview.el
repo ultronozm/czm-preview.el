@@ -1407,7 +1407,7 @@ smallest interval that contains this group."
                           (point)))
           (when czm-preview--debug
             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
-          (setq-local czm-preview--editing-region-p nil)
+          (setq czm-preview--editing-region-p nil)
           (funcall action interval))
          ((setq interval (czm-preview--first-stale-chunk
                           (max begin-document (point))
@@ -1415,7 +1415,7 @@ smallest interval that contains this group."
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point)
                      below-window-end))
-          (setq-local czm-preview--editing-region-p nil)
+          (setq czm-preview--editing-region-p nil)
           (funcall action interval))
          ((and
            (> (point)
@@ -1437,7 +1437,7 @@ smallest interval that contains this group."
                    (unless (and (string= why "$")
                                 (string-match "[\n\r]"
                                               (buffer-substring-no-properties beg end)))
-                     (setq-local czm-preview--editing-region-p t)
+                     (setq czm-preview--editing-region-p t)
                      (funcall action (cons beg end)))))))))
          (t
           (setq-local czm-preview--keepalive nil)))))))
