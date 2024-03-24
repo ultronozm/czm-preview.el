@@ -336,6 +336,14 @@ source).  TODO: explain why"
             (set-buffer-modified-p nil)
           (save-buffer 0))))))
 
+(defcustom czm-preview-accomodate-newlines-in-environments t
+  "If non-nil, accomodate newlines in displayed math environments.
+It's invalid to have a newline in a TeX environment.  When this
+customization variable is set to non-nil, we delete blank lines
+in the region before processing."
+  :type 'boolean
+  :group 'czm-preview)
+
 (defun czm-preview--preprocess (str)
   "Preprocess STR for preview.
 Uses `czm-tex-util-get-label-number' to extract label numbers
@@ -361,9 +369,9 @@ into STR as tags."
               (insert (format "\\tag{%s}" number))))))
       (goto-char (point-min))
       ;; delete blank lines
-      ;; (while (re-search-forward "^\\s-*$" nil t)
-      ;;   (replace-match "" nil nil)
-      ;;   (delete-char 1))
+      (when czm-preview-accomodate-newlines-in-environments
+        (while (re-search-forward "^[[:space:]]*\n" nil t)
+          (replace-match "" nil nil)))
       (buffer-substring-no-properties (point-min)
                                       (point-max)))))
 
@@ -810,7 +818,17 @@ name(\\([^)]+\\))\\)\\|\
                                                            (goto-char lstart))
                                                          lstart))
                                                      (point)))
-                                       (region-end (point))
+                                       (region-end
+                                        (or
+                                         (and
+                                          czm-preview-accomodate-newlines-in-environments
+                                          (save-excursion
+                                            (goto-char region-beg)
+                                            (when (looking-at "\\\\begin{[^}]*}")
+                                              (goto-char (match-end 0))
+                                              (when-let ((matching-end (LaTeX-find-matching-end)))
+                                                matching-end))))
+                                         (point)))
                                        (ovl (preview-place-preview
                                              snippet
                                              region-beg
