@@ -369,7 +369,9 @@ into STR as tags."
               (insert (format "\\tag{%s}" number))))))
       (goto-char (point-min))
       ;; delete blank lines
-      (when czm-preview-accomodate-newlines-in-environments
+      (when (and
+             czm-preview--editing-region-p
+             czm-preview-accomodate-newlines-in-environments)
         (while (re-search-forward "^[[:space:]]*\n" nil t)
           (replace-match "" nil nil)))
       (buffer-substring-no-properties (point-min)
@@ -448,6 +450,8 @@ previews generated.  See the corresponding part of the source
 code of `czm-preview-override-parse-messages' for details."
   :type '(repeat (choice regexp function))
   :group 'czm-preview)
+
+(defvar czm-preview--editing-region-p nil)
 
 (defun czm-preview-override-parse-messages (open-closure)
   "Turn all preview snippets into overlays.
@@ -821,6 +825,7 @@ name(\\([^)]+\\))\\)\\|\
                                        (region-end
                                         (or
                                          (and
+                                          czm-preview--editing-region-p
                                           czm-preview-accomodate-newlines-in-environments
                                           (save-excursion
                                             (goto-char region-beg)
@@ -930,13 +935,13 @@ its argument."
     ;; environment coincides with the start of the active environment?
     (when czm-preview--active-environment-start
       (save-excursion
- (beginning-of-line)
- (when-let ((env-start (czm-preview--valid-environment-start)))
-   (when (eq env-start czm-preview--active-environment-start)
-     (preview-clearout start end tempdir)
-     (setq czm-preview--active-environment-start nil)
-     (setq start env-start)
-     (setq end env-start)))))
+        (beginning-of-line)
+        (when-let ((env-start (czm-preview--valid-environment-start)))
+          (when (eq env-start czm-preview--active-environment-start)
+            (preview-clearout start end tempdir)
+            (setq czm-preview--active-environment-start nil)
+            (setq start env-start)
+            (setq end env-start)))))
     (apply orig-func (list snippet start end box counters tempdir place-opts))))
 
 
@@ -1402,6 +1407,7 @@ smallest interval that contains this group."
                           (point)))
           (when czm-preview--debug
             (message "above-window-beg: %s, point: %s" above-window-beg (point)))
+          (setq-local czm-preview--editing-region-p nil)
           (funcall action interval))
          ((setq interval (czm-preview--first-stale-chunk
                           (max begin-document (point))
@@ -1409,6 +1415,7 @@ smallest interval that contains this group."
           (when czm-preview--debug
             (message "point: %s, below-window-end: %s" (point)
                      below-window-end))
+          (setq-local czm-preview--editing-region-p nil)
           (funcall action interval))
          ((and
            (> (point)
@@ -1430,6 +1437,7 @@ smallest interval that contains this group."
                    (unless (and (string= why "$")
                                 (string-match "[\n\r]"
                                               (buffer-substring-no-properties beg end)))
+                     (setq-local czm-preview--editing-region-p t)
                      (funcall action (cons beg end)))))))))
          (t
           (setq-local czm-preview--keepalive nil)))))))
