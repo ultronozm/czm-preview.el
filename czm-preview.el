@@ -344,6 +344,8 @@ in the region before processing."
   :type 'boolean
   :group 'czm-preview)
 
+(defvar czm-preview--editing-region-p nil)
+
 (defun czm-preview--preprocess (str)
   "Preprocess STR for preview.
 Uses `czm-tex-util-get-label-number' to extract label numbers
@@ -450,8 +452,6 @@ previews generated.  See the corresponding part of the source
 code of `czm-preview-override-parse-messages' for details."
   :type '(repeat (choice regexp function))
   :group 'czm-preview)
-
-(defvar czm-preview--editing-region-p nil)
 
 (defun czm-preview-override-parse-messages (open-closure)
   "Turn all preview snippets into overlays.
