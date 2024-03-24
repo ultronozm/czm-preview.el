@@ -34,7 +34,12 @@ This package distills the modifications to my local copy of =preview.el= accumul
 
    This package gives correct equation numbers when visiting a .tex file that has an accompanying .aux file (e.g., generated continuously via latexmk, which I do via [[https://github.com/ultronozm/czm-tex-compile.el][czm-tex-compile.el]]).
 
-   In-buffer numbering for other types of environments (theorems, ...) is provided by the package [[https://github.com/ultronozm/czm-tex-fold.el][czm-tex-fold.el]].  When using both packages, "everything" is numbered just like in the compiled document.  This is very convenient, e.g., when implementing the suggestions of a collaborator or referee ("fix equation 3.8.1 and Theorem 3.5").
+   In-buffer numbering for other types of environments (theorems, ...) is provided by the package [[https://github.com/ultronozm/czm-tex-fold.el][czm-tex-fold.el]].  When using both packages, "everything" is numbered just like in the compiled document.  This is very convenient, e.g., when implementing the suggestions of a collaborator or referee ("fix equation 3.8.1 and Theorem 3.5").  The numbering also comes in handy when searching for references using [[https://github.com/ultronozm/czm-tex-fold.el][czm-tex-ref.el]], which looks something like this:
+
+   #+attr_html: :width 800px
+   #+attr_latex: :width 800px
+   [[./img/numbers.png]]
+
 
 Some of these features are also available in the package [[https://github.com/dandavison/xenops][xenops]], but they're implemented differently there: from the ground up, rather than using AUCTeX as a base.  Incidentally, I've never really gotten the chance to try  =xenops=, which [[https://github.com/dandavison/xenops/issues][doesn't seem to work]] with recent versions of emacs.
 
