@@ -101,6 +101,8 @@ Visit a TeX file, with AUCTeX's =LaTeX-mode= as the major-mode.  Run =M-x czm-pr
 	      "}{preview}\\AtBeginDocument{\\ifx\\ifPreview\\undefined" preview-default-preamble "\\fi}\"%' \"\\detokenize{\" %(t-filename-only) \"}\""))))
   #+end_src
 
+- If your tex file sets =TeX-master= to =t= as a file local variable (common in AUCTeX) and you activate =czm-preview-mode= via =LaTeX-mode-hook=, then the file local variable will set =TeX-master= to =t=, while =czm-preview-mode= requires it to be something else, so previews won't work.  You can fix this issue by turning =czm-preview-mode= on and off, which will set =TeX-master= to the correct value.
+
 * Caution
 
 This minor mode is implemented in part via =:override= advice applied to the packages tex.el/preview.el, and so might be incompatible with future versions of those.  This is a poor design choice, guided by my practical needs.

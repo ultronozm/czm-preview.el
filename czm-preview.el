@@ -80,7 +80,8 @@
   :prefix "czm-preview-")
 
 (defcustom czm-preview-valid-environments
-  '("equation" "equation*" "align" "align*" "tabular" "tabular*" "multline" "multline*")
+  '("equation" "equation*" "align" "align*" "tabular" "tabular*" "multline" "multline*"
+    "tikzpicture")
   "Valid LaTeX environments for active preview."
   :type '(repeat string)
   :group 'czm-preview)
@@ -356,7 +357,7 @@ into STR as tags."
                 (let ((comment-start-skip
                        "\\(\\(^\\|[^\\
 ]\\)\\(\\\\\\\\\\)*\\)\\(%+[ 	]*\\)"))
-                  (texmathp))
+                  (czm-preview--texmathp))
               (insert (format "\\tag{%s}" number))))))
       (goto-char (point-min))
       ;; delete blank lines
@@ -864,16 +865,28 @@ allow us to work with previews in indirect buffers."
   (with-current-buffer (or buf (current-buffer))
     (unless (buffer-base-buffer)    ; do not clearout indirect buffers
       (save-restriction
- (widen)
- (preview-clearout (point-min) (point-max) (visited-file-modtime))))))
+        (widen)
+        (preview-clearout (point-min) (point-max) (visited-file-modtime))))))
+
+
+(defun czm-preview--texmathp ()
+  (cond
+   ((texmathp)
+    texmathp-why)
+   (t
+    (let ((env (LaTeX-current-environment)))
+      (when (member env czm-preview-valid-environments)
+        (cons env
+              (save-excursion
+                (LaTeX-find-matching-begin)
+                (point))))))))
 
 (defun czm-preview--valid-environment-start ()
   "Return start of current equation-like environment.
 Return nil if not currently in such an environment."
-  (and
-   (texmathp)
-   (member (car texmathp-why) czm-preview-valid-environments)
-   (cdr texmathp-why)))
+  (when-let ((why (czm-preview--texmathp)))
+    (when (member (car why) czm-preview-valid-environments)
+      (cdr why))))
 
 (defun czm-preview--around-place-preview (orig-func &rest args)
   "Used as :around advice for the function `preview-place-preview'.
@@ -1097,7 +1110,7 @@ whatsoever with point inside that region, then kill the preview."
    ;; of the environment?
    (not (eq czm-preview--active-environment-start
             (car czm-preview--active-region)))
-   (texmathp)
+   (czm-preview--texmathp)
    (<= (car czm-preview--active-region) (point))
    (< (point) (cdr czm-preview--active-region))
    (ignore-errors (TeX-kill-job))))
@@ -1123,18 +1136,23 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
    ;; (get-buffer-process (TeX-process-buffer-name (concat (TeX-master-directory) (TeX-active-master))))
    (get-buffer-process (TeX-process-buffer-name (concat (TeX-active-master))))))
 
+(defun czm-preview--extended-texmathp-environment-p (env)
+  "Return list of LaTeX math environments should be previewed."
+  (or (member env czm-preview-valid-environments)
+      (member env texmathp-environments)))
 
 (defun czm-preview--find-end-of-block (why bound)
   "Find end of LaTeX math block starting with WHY before BOUND."
   (catch 'found
     (let ((end-regexp
            (cond
-             ((string= why "$") "\\$")
-             ((string= why "$$") "\\$\\$")
-             ((string= why "\\[") "\\\\\\]")
-             ((string= why "\\(") "\\\\)")
-             ((member why texmathp-environments)
-              (concat "\\\\end{" (regexp-quote why) "}")))))
+            ((string= why "$") "\\$")
+            ((string= why "$$") "\\$\\$")
+            ((string= why "\\[") "\\\\\\]")
+            ((string= why "\\(") "\\\\)")
+            ((czm-preview--extended-texmathp-environment-p why)
+             ;; (member why texmathp-environments)
+             (concat "\\\\end{" (regexp-quote why) "}")))))
       (while (re-search-forward end-regexp bound t)
         (when (and (not (TeX-in-comment))
                    ;; (not (LaTeX-verbatim-p))
@@ -1142,7 +1160,7 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
           (let ((inner-end (match-beginning 0))
                 (end (point)))
             (throw 'found
-              (cons inner-end end))))))))
+                   (cons inner-end end))))))))
 
 
 (defcustom czm-preview-predicate nil
@@ -1166,12 +1184,17 @@ which in turn calls `LaTeX-verbatim-p', which in turn calls
             (env-name (match-string 2))
             (match (match-string 0)))
         (when (and (not (TeX-in-comment))
-                   (texmathp)
+                   (or
+                    (and
+                     (null env-name)
+                     (texmathp))
+                    (czm-preview--extended-texmathp-environment-p env-name)
+                    ;; (member env-name texmathp-environments)
+                    )
                    (or (null czm-preview-predicate)
                        (funcall czm-preview-predicate))
                    ;; (not (LaTeX-verbatim-p))
-                   (or (null env-name)
-                       (member env-name texmathp-environments)))
+                   )
           (when-let* ((why (or env-name match))
                       (block-bound (save-excursion
                                      (if (re-search-forward
@@ -1372,24 +1395,24 @@ smallest interval that contains this group."
          ((and
            (> (point)
               begin-document)
-           (texmathp)
-           (let ((why (car texmathp-why))
-                 (beg (cdr texmathp-why)))
-             (unless (czm-preview--active-or-inactive-preview-at-point-p
-                      beg)
-               (when-let* ((bound (save-excursion
-                                    (if (re-search-forward
-                                         "[\n\r][ \t]*[\n\r]"
-                                         (point-max)
-                                         t)
-                                        (match-beginning 0)
-                                      (point-max))))
-                           (end (cdr (save-excursion
-                                       (czm-preview--find-end-of-block why bound)))))
-                 (unless (and (string= why "$")
-                              (string-match "[\n\r]"
-                                            (buffer-substring-no-properties beg end)))
-                   (funcall action (cons beg end))))))))
+           (when-let ((tmp (czm-preview--texmathp)))
+             (let ((why (car tmp))
+                   (beg (cdr tmp)))
+               (unless (czm-preview--active-or-inactive-preview-at-point-p
+                        beg)
+                 (when-let* ((bound (save-excursion
+                                      (if (re-search-forward
+                                           "[\n\r][ \t]*[\n\r]"
+                                           (point-max)
+                                           t)
+                                          (match-beginning 0)
+                                        (point-max))))
+                             (end (cdr (save-excursion
+                                         (czm-preview--find-end-of-block why bound)))))
+                   (unless (and (string= why "$")
+                                (string-match "[\n\r]"
+                                              (buffer-substring-no-properties beg end)))
+                     (funcall action (cons beg end)))))))))
          (t
           (setq-local czm-preview--keepalive nil)))))))
 
