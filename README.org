@@ -16,7 +16,7 @@ This package distills the modifications to my local copy of =preview.el= accumul
 
    With stock AUCTeX, one manually generates previews in various regions: the current section, the entire document, the marked region, and so on.  Also, you're not supposed to edit while the previews generate, because that can mess up their positioning.  A typical workflow is thus to run the command =preview-section= (=C-c C-p C-s=) every few minutes, during pauses in editing.  This introduces a bit of overhead if you prefer to have previews on by default.
 
-   With this package, previews generate automatically in the visible buffer, and editing won't mess up their positioning.  These features are convenient if you're in the habit of using a TeX buffer like a blackboard, for thinking rather than just for publishing.
+   With this package, previews generate automatically in the visible buffer, and editing won't mess up their positioning.  These features are convenient if you're in the habit of using a TeX buffer like a blackboard, for thinking or collaborating rather than just for publishing.
 
 2. /Previews remain visible while you edit them/.
 
