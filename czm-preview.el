@@ -1359,6 +1359,9 @@ Return cons cell of beginning and ending positions."
 Return cons cell of beginning and ending positions."
   (czm-preview--get-stale-chunk beg end nil))
 
+(defvar czm-preview--inhibit-message t
+  "If non-nil, inhibit messages in `czm-preview--preview-some-chunk'.")
+
 (defun czm-preview--preview-some-chunk ()
   "Run `preview-region' on an appropriate region.
 Identify top level math intervals in the window.  Find the first
@@ -1378,7 +1381,7 @@ smallest interval that contains this group."
                                    czm-preview-characters-below-to-preview)))
          (action
           (lambda (interval)
-            (let ((inhibit-message t)
+            (let ((inhibit-message czm-preview--inhibit-message)
                   (beg (car interval))
                   (end (cdr interval)))
               (when czm-preview--debug
