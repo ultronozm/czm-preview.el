@@ -197,7 +197,10 @@ run.  We do not ask the user to make a decision."
        ((eq (process-status process) 'run)
         (error "Cannot have two processes for the same document"))))))
 
-
+(defvar czm-preview--name-map (make-hash-table :test 'equal)
+  "Dictionary that maps names to buffers.
+Used to support buffers whose names contain tildes, which are escape
+characters in tex.  The keys are the names of the buffers with the tildes removed, while the values are the buffer names.")
 
 (defun czm-preview-override-TeX-region-create (file region original offset)
   "Create a new file named FILE with the string REGION.
@@ -212,6 +215,9 @@ original file.
 
 OVERRIDE DIFFERENCES: Three lines are commented out (see the
 source).  TODO: explain why"
+
+  (puthash original (buffer-name) czm-preview--name-map)
+
   (if (fboundp 'preview--skip-preamble-region)
       (let ((temp (preview--skip-preamble-region region offset)))
         (if temp
@@ -383,7 +389,13 @@ into STR as tags."
 (defvar czm-preview--region-preprocess-function #'czm-preview--preprocess
   "Function to preprocess region before previewing.")
 
-(defvar czm-preview--region-original-argument-function #'buffer-name
+(defun czm-preview--buffer-name-hack ()
+  "Return buffer name but with tildes deleted.
+Intended to be useful for previewing git diffs."
+  (let ((name (buffer-name)))
+    (replace-regexp-in-string "~" "" name)))
+
+(defvar czm-preview--region-original-argument-function #'czm-preview--buffer-name-hack
   "Function to get the `original' argument for `TeX-region-create'.")
 
 (defun czm-preview-override-region (begin end)
@@ -727,7 +739,9 @@ name(\\([^)]+\\))\\)\\|\
                   ;;
                   ;; TODO: document the next bit.
                   (let ((buffer (or (get-buffer (file-name-nondirectory file))
-                                    (find-buffer-visiting file))))
+                                    (find-buffer-visiting file)
+                                    ;; get from dictionary
+                                    (gethash file czm-preview--name-map))))
                     (when buffer
                       (set-buffer buffer)))
                   (setq lfile file))
