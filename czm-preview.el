@@ -200,7 +200,8 @@ run.  We do not ask the user to make a decision."
 (defvar czm-preview--name-map (make-hash-table :test 'equal)
   "Dictionary that maps names to buffers.
 Used to support buffers whose names contain tildes, which are escape
-characters in tex.  The keys are the names of the buffers with the tildes removed, while the values are the buffer names.")
+characters in tex.  The keys are the names of the buffers with the
+tildes removed, while the values are the buffer names.")
 
 (defun czm-preview-override-TeX-region-create (file region original offset)
   "Create a new file named FILE with the string REGION.
