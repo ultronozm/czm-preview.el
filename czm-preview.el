@@ -195,7 +195,8 @@ run.  We do not ask the user to make a decision."
                 (eq (process-status process) 'run))
       (cond
        ((eq (process-status process) 'run)
-           (error "Cannot have two processes for the same document"))))))
+        (error "Cannot have two processes for the same document"))))))
+
 
 
 (defun czm-preview-override-TeX-region-create (file region original offset)
