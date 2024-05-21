@@ -1,6 +1,9 @@
 #+title: czm-preview.el: Extensions for preview.el
 #+author: Paul Nelson
 
+* Notice
+This package should now be considered deprecated in favor of AUCTeX 14.0.5 and the newer package [[https://github.com/ultronozm/preview-auto.el]], which incorporate all the functionality of this package, but without the hacky =:override= advice used in its implementation.  I'm leaving this one here in case any existing users are happy with it and don't want to update their configs, etc.
+
 * Overview
 This package supplies a minor mode =czm-preview-mode= that augments =preview.el= (or preview-latex) from AUCTeX.  The [[https://www.gnu.org/software/auctex/manual/preview-latex/Introduction.html#Introduction][introduction]] to the =preview.el= manual reads as follows:
 
